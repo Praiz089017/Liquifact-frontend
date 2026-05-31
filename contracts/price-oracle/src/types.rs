@@ -80,12 +80,15 @@ pub enum DataKey {
     /// Uptime streak start timestamp used to reset slashing multipliers after 48h
     /// of uninterrupted healthy operation.
     ProviderUptimeStreakStart(Address),
+    /// The exact ledger height of the provider's last successful price update.
+    ProviderLastSeenLedger(Address),
     /// The SEP-41 token contract address used for staking and slashing.
     SlashToken,
     /// The address of the insurance reserve that receives slashed funds.
     InsuranceReserve,
-    /// The address of the registered GasTank contract for relayer reimbursement (Issue #266).
-    GasTank,
+    /// The ledger sequence number when the oracle last resumed from a halt.
+    /// Used to ignore tracking metrics (TWAP, RecentEvents) from before the recovery.
+    BaselineLedger,
 }
 
 /// Decimal metadata for an asset pair.

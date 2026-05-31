@@ -340,6 +340,13 @@ pub trait StellarFlowTrait {
         bad_relayer: Address,
         amount: i128,
     ) -> Result<(), Error>;
+
+    /// Get the exact ledger height of the provider's last successful price update.
+    fn get_provider_last_seen_ledger(env: Env, provider: Address) -> u32;
+
+    /// Return `true` if the provider has submitted a price update within the
+    /// last `window` ledgers.
+    fn is_provider_active(env: Env, provider: Address, window: u32) -> bool;
 }
 
 #[contractclient(name = "TokenContractClient")]
@@ -1798,6 +1805,9 @@ impl PriceOracle {
             ttl,
         };
 
+        // Record the provider's heartbeat (last seen ledger height) - tracking node liveness
+        storage.set(&DataKey::ProviderLastSeenLedger(source.clone()), &env.ledger().sequence());
+
         storage.set(&key, &price_data);
         update_twap(&env, asset.clone(), median_price, env.ledger().timestamp());
 
@@ -2866,8 +2876,46 @@ impl PriceOracle {
         admin2.require_auth();
         crate::auth::_require_authorized(&env, &admin1);
         crate::auth::_require_authorized(&env, &admin2);
+
+        let previous_halt_state = crate::auth::_is_halted(&env);
         crate::auth::_set_halted(&env, status);
+
+        // Graceful Recovery: If we are resuming from a halt (status: true -> false),
+        // clear out older tracking metrics to ensure synchronization.
+        if previous_halt_state && !status {
+            Self::_perform_graceful_recovery(&env);
+        }
+
         Ok(())
+    }
+
+    /// Internal routine to clear stale metrics when resuming from a halt.
+    fn _perform_graceful_recovery(env: &Env) {
+        // 1. Reset baseline ledger to mark the "new beginning" of the system.
+        env.storage().instance().set(&DataKey::BaselineLedger, &env.ledger().sequence());
+
+        // 2. Clear RecentEvents activity feed to remove stale pre-halt logs.
+        env.storage().temporary().remove(&DataKey::RecentEvents);
+
+        // 3. Reset provider metrics.
+        // During a system-wide halt, relayers may have been unable to submit.
+        // We reset their counters so they aren't unfairly penalized for the halt duration.
+        let relayers = crate::auth::_get_active_relayers(env);
+        for relayer in relayers.iter() {
+            // Reset consecutive missed blocks.
+            env.storage().persistent().remove(&DataKey::ProviderConsecutiveMissedBlocks(relayer.clone()));
+            // Reset uptime streak start (they must earn a new 48h streak).
+            env.storage().persistent().remove(&DataKey::ProviderUptimeStreakStart(relayer.clone()));
+            // Update last seen to current ledger so they aren't flagged as inactive immediately.
+            env.storage().persistent().set(&DataKey::ProviderLastSeenLedger(relayer.clone()), &env.ledger().sequence());
+        }
+
+        // 4. Clear TWAPs for all tracked assets.
+        // We clear these because the historical prices in the buffer are now stale.
+        let assets = get_tracked_assets(env);
+        for asset in assets.iter() {
+            env.storage().temporary().remove(&DataKey::Twap(asset));
+        }
     }
 
     /// Return the current emergency halt state.
@@ -3298,6 +3346,22 @@ impl PriceOracle {
         crate::auth::_require_authorized(&env, &executor);
 
         crate::slashing::execute_slash_internal(&env, &executor, &bad_relayer, amount)
+    }
+
+    pub fn get_provider_last_seen_ledger(env: Env, provider: Address) -> u32 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::ProviderLastSeenLedger(provider))
+            .unwrap_or(0)
+    }
+
+    pub fn is_provider_active(env: Env, provider: Address, window: u32) -> bool {
+        let last_seen = Self::get_provider_last_seen_ledger(env.clone(), provider);
+        if last_seen == 0 {
+            return false;
+        }
+        let current_ledger = env.ledger().sequence();
+        current_ledger <= last_seen.saturating_add(window)
     }
 }
 
