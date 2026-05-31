@@ -6,7 +6,6 @@ use soroban_sdk::{
     testutils::Ledger, vec, Address, Env, Symbol,
 };
 
-#[soroban_sdk::contractevent]
 pub struct TokenTransferEvent {
     pub from: Address,
     pub to: Address,
@@ -20,8 +19,7 @@ pub struct DummyToken;
 impl DummyToken {
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
         from.require_auth();
-        env.events()
-            .publish_event(&TokenTransferEvent { from, to, amount });
+        env.events().publish((Symbol::new(&env, "token_transfer_event"),), (from, to, amount));
     }
 }
 
