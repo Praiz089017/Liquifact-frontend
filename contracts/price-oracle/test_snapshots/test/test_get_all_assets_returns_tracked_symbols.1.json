@@ -28,75 +28,64 @@
               "ext": "v0",
               "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
               "key": {
-                "symbol": "PRICES"
+                "vec": [
+                  {
+                    "symbol": "VerifiedPrice"
+                  },
+                  {
+                    "symbol": "KES"
+                  }
+                ]
               },
-              "durability": "persistent",
+              "durability": "temporary",
               "val": {
                 "map": [
                   {
                     "key": {
-                      "symbol": "KES"
+                      "symbol": "confidence_score"
                     },
                     "val": {
-                      "map": [
-                        {
-                          "key": {
-                            "symbol": "asset"
-                          },
-                          "val": {
-                            "symbol": "KES"
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "price"
-                          },
-                          "val": {
-                            "i128": "800"
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "timestamp"
-                          },
-                          "val": {
-                            "u64": "0"
-                          }
-                        }
-                      ]
+                      "u32": 100
                     }
                   },
                   {
                     "key": {
-                      "symbol": "NGN"
+                      "symbol": "decimals"
                     },
                     "val": {
-                      "map": [
-                        {
-                          "key": {
-                            "symbol": "asset"
-                          },
-                          "val": {
-                            "symbol": "NGN"
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "price"
-                          },
-                          "val": {
-                            "i128": "1500"
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "timestamp"
-                          },
-                          "val": {
-                            "u64": "0"
-                          }
-                        }
-                      ]
+                      "u32": 2
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "price"
+                    },
+                    "val": {
+                      "i128": "800"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "provider"
+                    },
+                    "val": {
+                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "timestamp"
+                    },
+                    "val": {
+                      "u64": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "ttl"
+                    },
+                    "val": {
+                      "u64": "14400"
                     }
                   }
                 ]
@@ -105,7 +94,83 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 15
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "VerifiedPrice"
+                  },
+                  {
+                    "symbol": "NGN"
+                  }
+                ]
+              },
+              "durability": "temporary",
+              "val": {
+                "map": [
+                  {
+                    "key": {
+                      "symbol": "confidence_score"
+                    },
+                    "val": {
+                      "u32": 100
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "decimals"
+                    },
+                    "val": {
+                      "u32": 2
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "price"
+                    },
+                    "val": {
+                      "i128": "1500"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "provider"
+                    },
+                    "val": {
+                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "timestamp"
+                    },
+                    "val": {
+                      "u64": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "ttl"
+                    },
+                    "val": {
+                      "u64": "3600"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 15
       },
       {
         "entry": {
@@ -121,7 +186,112 @@
                   "executable": {
                     "wasm": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                   },
-                  "storage": null
+                  "storage": [
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "BaseCurrencyPairs"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "vec": [
+                          {
+                            "symbol": "NGN"
+                          },
+                          {
+                            "symbol": "KES"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "RecentEvents"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "vec": [
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "asset"
+                                },
+                                "val": {
+                                  "symbol": "KES"
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "event_type"
+                                },
+                                "val": {
+                                  "symbol": "asset_added"
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "price"
+                                },
+                                "val": {
+                                  "i128": "800"
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "timestamp"
+                                },
+                                "val": {
+                                  "u64": "0"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "asset"
+                                },
+                                "val": {
+                                  "symbol": "NGN"
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "event_type"
+                                },
+                                "val": {
+                                  "symbol": "asset_added"
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "price"
+                                },
+                                "val": {
+                                  "i128": "1500"
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "timestamp"
+                                },
+                                "val": {
+                                  "u64": "0"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ]
                 }
               }
             }
