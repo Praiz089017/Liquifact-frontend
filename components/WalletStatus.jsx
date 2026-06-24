@@ -1,9 +1,29 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useWallet, WALLET_STATES } from './WalletContext';
 
 export default function WalletStatus() {
   const { walletState, walletData, error, connectWallet, disconnectWallet } = useWallet();
+  
+  // Defensive hydration guard: if this component is ever imported directly
+  // (not through the lazy wrapper), render an identical placeholder on
+  // first paint to avoid hydration mismatch warnings. The lazy wrapper
+  // already handles this, but this guard protects against direct imports.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div
+        data-testid="wallet-status-placeholder"
+        aria-hidden="true"
+        className="flex items-center gap-4 h-12 w-80 animate-pulse rounded-full bg-slate-800/50"
+      />
+    );
+  }
 
   const getStateConfig = (state) => {
     switch (state) {
