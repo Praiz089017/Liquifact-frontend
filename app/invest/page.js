@@ -2,59 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import ErrorBanner from "@/components/ErrorBanner";
-import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
+import ErrorBanner from "../../components/ErrorBanner";
+import InvoiceListSkeleton from "../../components/InvoiceListSkeleton";
 import { copy } from "../copy/en";
+import { loadMockInvoices } from "./lib";
 
-/**
- * Mock invoice data — replace with real API call once the backend endpoint
- * is available (follow-up: link backend issue here).
- *
- * Contract per item: { id, issuer, amount, currency, dueDate, yield, status }
- * NOTE: yield values are illustrative; contracts use on-chain basis points and actual settlement is at maturity.
- */
-const MOCK_INVOICES = [
-  {
-    id: "inv-001",
-    issuer: "Acme Supplies Ltd",
-    amount: "12,500",
-    currency: "USD",
-    dueDate: "2026-06-15",
-    yield: "8.2%",
-    status: "Open",
-  },
-  {
-    id: "inv-002",
-    issuer: "Bright Logistics GmbH",
-    amount: "7,800",
-    currency: "EUR",
-    dueDate: "2026-07-01",
-    yield: "7.5%",
-    status: "Open",
-  },
-  {
-    id: "inv-003",
-    issuer: "Sunrise Exports Pte",
-    amount: "22,000",
-    currency: "USD",
-    dueDate: "2026-05-30",
-    yield: "9.1%",
-    status: "Open",
-  },
-];
-
-// DEV-only delay (ms) to make the skeleton visible during local development.
-const DEV_DELAY = process.env.NODE_ENV === "development" ? 1500 : 0;
-
-function loadMockInvoices() {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(MOCK_INVOICES), DEV_DELAY);
-  });
-}
-
-export function getInvoiceLoadAnnouncement(invoices) {
+export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCount } = {}) {
   if (!Array.isArray(invoices) || invoices.length === 0) {
     return "No invoices available";
+  }
+
+  if (filterActive) {
+    return filteredCount === 0
+      ? "No invoices match"
+      : `${filteredCount} of ${invoices.length} invoices match`;
   }
 
   return `${invoices.length} investable invoices loaded`;
@@ -62,8 +23,9 @@ export function getInvoiceLoadAnnouncement(invoices) {
 
 export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   const [invoices, setInvoices] = useState(null); // null = loading
-  const [statusMessage, setStatusMessage] = useState("");
   const [loadError, setLoadError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
   useEffect(() => {
     let isActive = true;
@@ -76,12 +38,9 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           return;
         }
 
-        const normalizedInvoices = Array.isArray(nextInvoices)
-          ? nextInvoices
-          : [];
+        const normalizedInvoices = Array.isArray(nextInvoices) ? nextInvoices : [];
 
         setInvoices(normalizedInvoices);
-        setStatusMessage(getInvoiceLoadAnnouncement(normalizedInvoices));
       } catch {
         if (!isActive) {
           return;
@@ -89,7 +48,6 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
 
         setInvoices([]);
         setLoadError("Unable to load investable invoices right now.");
-        setStatusMessage("Unable to load investable invoices.");
       }
     };
 
@@ -100,22 +58,35 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     };
   }, [loadInvoices]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const filteredInvoices = Array.isArray(invoices)
+    ? invoices.filter((inv) =>
+        inv.issuer.toLowerCase().includes(debouncedQuery.trim().toLowerCase()),
+      )
+    : [];
+
+  const statusMessage = (() => {
+    if (invoices === null) return "";
+    if (loadError) return "Unable to load investable invoices.";
+    return getInvoiceLoadAnnouncement(invoices, {
+      filterActive: Boolean(debouncedQuery.trim()),
+      filteredCount: filteredInvoices.length,
+    });
+  })();
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 px-6 py-4">
-        <Link
-          href="/"
-          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
-        >
-          ← LiquiFact
-        </Link>
-      </header>
+      <NavMenu />
 
       <main className="max-w-4xl mx-auto px-6 py-12">
         <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
-        <p className="text-slate-400 mb-8">
-          {copy.invest.subtext}
-        </p>
+        <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
 
         <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
           {statusMessage}
@@ -124,6 +95,12 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
         {/* Filter Controls - Disabled with Coming Soon Indicators */}
         <div className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6">
           <div className="flex flex-wrap gap-4 items-center">
+            {/* Issuer Search */}
+            <InvoiceSearch
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
+
             {/* Yield Range Filter */}
             <div className="flex items-center gap-2">
               <button
@@ -137,9 +114,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-                Soon
-              </span>
+              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">Soon</span>
             </div>
 
             {/* Currency Filter */}
@@ -155,9 +130,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-                Soon
-              </span>
+              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">Soon</span>
             </div>
 
             {/* Maturity Date Filter */}
@@ -173,9 +146,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-                Soon
-              </span>
+              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">Soon</span>
             </div>
 
             {/* Sort Options */}
@@ -191,9 +162,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-                Soon
-              </span>
+              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">Soon</span>
             </div>
 
             {/* Clear Filters - Also Disabled */}
@@ -206,49 +175,43 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
               >
                 Clear Filters
               </button>
-              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-                Soon
-              </span>
+              <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">Soon</span>
             </div>
           </div>
         </div>
 
         {loadError ? (
-          <ErrorBanner
-            variant="error"
-            title="Unable to load investable invoices"
-            description={loadError}
-            previewLabel="Marketplace status"
-          />
+          <ErrorBanner variant="error" title="Unable to load investable invoices" description={loadError} previewLabel="Marketplace status" />
         ) : invoices === null ? (
           <InvoiceListSkeleton rows={3} />
         ) : invoices.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-300">
-            {copy.invest.emptyState}
-          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-300">{copy.invest.emptyState}</div>
         ) : (
           <>
             <ul className="space-y-4">
               {invoices.map((inv) => (
-                <li
-                  key={inv.id}
-                  className="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-medium text-slate-100">
-                      {inv.issuer}
-                    </span>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                      {inv.status}
-                    </span>
-                  </div>
-                  <div className="flex gap-6 text-sm text-slate-300">
-                    <span>
-                      {inv.currency}&nbsp;{inv.amount}
-                    </span>
-                    <span>Est. yield&nbsp;{inv.yield}</span>
-                    <span>Maturity&nbsp;{inv.dueDate}</span>
-                  </div>
+                <li key={inv.id}>
+                  <Link
+                    href={`/invest/${inv.id}`}
+                    className="block rounded-xl border border-slate-800 bg-slate-900/50 p-5 hover:border-cyan-500/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+                    aria-label={`View details for ${inv.issuer} invoice ${inv.id}`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-medium text-slate-100">
+                        {inv.issuer}
+                      </span>
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
+                        {inv.status}
+                      </span>
+                    </div>
+                    <div className="flex gap-6 text-sm text-slate-300">
+                      <span>
+                        {inv.currency}&nbsp;{inv.amount}
+                      </span>
+                      <span>Est. yield&nbsp;{inv.yield}</span>
+                      <span>Maturity&nbsp;{inv.dueDate}</span>
+                    </div>
+                  </Link>
                 </li>
               ))}
             </ul>
