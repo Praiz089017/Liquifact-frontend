@@ -355,28 +355,20 @@ export default function MyPage() {
 
 See [TESTING.md](TESTING.md) for the full guide covering Jest unit/accessibility tests and Playwright end-to-end setup.
 
----
+## Backend Health Check
 
-## Marketplace Pagination
+The home page health check now:
 
-The **Invest** marketplace (`app/invest/page.js`) renders invoices PAGE_SIZE at a time to keep the DOM bounded as the dataset grows.
+- Uses an 8 second timeout.
+- Aborts hung requests.
+- Safely handles HTML and malformed JSON responses.
+- Reports one of the following:
 
-| Constant | Value | Description |
-|---|---|---|
-| `PAGE_SIZE` | `10` | Maximum invoices shown per page (exported for tests) |
+  - Connected
+  - Degraded
+  - Unreachable
 
-### Behaviour
-
-- **Initial render** — only the first `PAGE_SIZE` invoices are rendered.
-- **Load more** — clicking "Load more" appends the next `PAGE_SIZE` items.  The button disappears once all invoices are visible.
-- **Status region** — a screen-reader live region announces "Showing N of M investable invoices" after each load so assistive-technology users always know their position.
-- **Paging reset** — `visibleCount` resets to `PAGE_SIZE` whenever a new invoice array arrives (e.g. after a filter change), ensuring a consistent first-page experience.
-- **Edge cases** — fewer items than a page, exactly one page, and the final partial page all work correctly; no "Load more" button is shown when all items already fit.
-
-### Accessibility
-
-- The "Load more" button has `aria-label="Load more invoices"`.
-- Focus returns to the button after each click so keyboard users keep their navigation position (validate with Playwright; jsdom focus handling is limited in unit tests).
+- Provides a detailed disclosure for raw responses.
 
 ## Contracts
 
