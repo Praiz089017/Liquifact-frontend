@@ -1,16 +1,15 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
+import InvoiceSearch from "@/components/InvoiceSearch";
+import { sanitize } from "@/utils/sanitizeUrl";
 
-/**
- * Mock invoice data — replace with real API call once the backend endpoint
- * is available (follow-up: link backend issue here).
- *
- * Contract per item: { id, issuer, amount, currency, dueDate, yield, status }
- * NOTE: yield values are illustrative; contracts use on-chain basis points and actual settlement is at maturity.
- */
+"use client";
+
+// Mock invoice data — replace with real API call once the backend endpoint
+// is available (follow-up: link backend issue here).
+// Contract per item: { id, issuer, amount, currency, dueDate, yield, status }
 const MOCK_INVOICES = [
   {
     id: "inv-001",
@@ -45,20 +44,56 @@ const MOCK_INVOICES = [
 const DEV_DELAY = process.env.NODE_ENV === "development" ? 1500 : 0;
 
 export default function InvestPage() {
-  const [invoices, setInvoices] = useState(null); // null = loading
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
+  // Initialise state from URL query parameters
+  const initialSearch = sanitize(searchParams.get("q")) ?? "";
+  const initialSort = sanitize(searchParams.get("sort")) ?? "";
+  const initialFilters = sanitize(searchParams.get("filters"))?.split(",").filter(Boolean) ?? [];
+
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [sortOption, setSortOption] = useState(initialSort);
+  const [activeFilters, setActiveFilters] = useState<string[]>(initialFilters);
+  const [invoices, setInvoices] = useState(null);
+
+  // Sync state changes back to the URL using replace (no history entry)
+  const syncToUrl = () => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.set("q", searchTerm);
+    if (sortOption) params.set("sort", sortOption);
+    if (activeFilters.length) params.set("filters", activeFilters.join(","));
+    const query = params.toString();
+    router.replace(query ? `?${query}` : "/invest");
+  };
+
+  // Effect: update URL whenever relevant state changes
+  useEffect(() => {
+    syncToUrl();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, sortOption, activeFilters]);
+
+  // Load mock invoices after optional dev delay
   useEffect(() => {
     const timer = setTimeout(() => setInvoices(MOCK_INVOICES), DEV_DELAY);
     return () => clearTimeout(timer);
   }, []);
 
+  // Hydrate state from URL when navigation occurs (back/forward)
+  useEffect(() => {
+    const q = sanitize(searchParams.get("q")) ?? "";
+    const s = sanitize(searchParams.get("sort")) ?? "";
+    const f = sanitize(searchParams.get("filters"))?.split(",").filter(Boolean) ?? [];
+    setSearchTerm(q);
+    setSortOption(s);
+    setActiveFilters(f);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="border-b border-slate-800 px-6 py-4">
-        <Link
-          href="/"
-          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
-        >
+        <Link href="/" className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline">
           ← LiquiFact
         </Link>
       </header>
@@ -69,112 +104,14 @@ export default function InvestPage() {
           Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
         </p>
 
-        {/* Filter Controls - Disabled with Coming Soon Tooltips */}
-        <div className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6">
-          <div className="flex flex-wrap gap-4 items-center">
-            {/* Yield Range Filter */}
-            <div className="group relative">
-              <button
-                type="button"
-                disabled
-                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-60 transition-colors"
-                aria-label="Yield range filter (coming soon)"
-              >
-                Yield Range
-                <svg className="inline-block ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-slate-700 text-slate-200 text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                Coming soon
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                  <div className="border-4 border-transparent border-t-slate-700"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Currency Filter */}
-            <div className="group relative">
-              <button
-                type="button"
-                disabled
-                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-60 transition-colors"
-                aria-label="Currency filter (coming soon)"
-              >
-                Currency
-                <svg className="inline-block ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-slate-700 text-slate-200 text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                Coming soon
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                  <div className="border-4 border-transparent border-t-slate-700"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Maturity Date Filter */}
-            <div className="group relative">
-              <button
-                type="button"
-                disabled
-                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-60 transition-colors"
-                aria-label="Maturity date filter (coming soon)"
-              >
-                Maturity Date
-                <svg className="inline-block ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-slate-700 text-slate-200 text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                Coming soon
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                  <div className="border-4 border-transparent border-t-slate-700"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Sort Options */}
-            <div className="group relative">
-              <button
-                type="button"
-                disabled
-                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-60 transition-colors"
-                aria-label="Sort options (coming soon)"
-              >
-                Sort: Best Yield
-                <svg className="inline-block ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-slate-700 text-slate-200 text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                Coming soon
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                  <div className="border-4 border-transparent border-t-slate-700"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Clear Filters - Also Disabled */}
-            <div className="group relative ml-auto">
-              <button
-                type="button"
-                disabled
-                className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-60 transition-colors"
-                aria-label="Clear filters (coming soon)"
-              >
-                Clear Filters
-              </button>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-slate-700 text-slate-200 text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                Coming soon
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                  <div className="border-4 border-transparent border-t-slate-700"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <InvoiceSearch
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          sortOption={sortOption}
+          onSortChange={setSortOption}
+          filters={activeFilters}
+          onFiltersChange={setActiveFilters}
+        />
 
         {invoices === null ? (
           <InvoiceListSkeleton rows={3} />
@@ -186,22 +123,15 @@ export default function InvestPage() {
           <>
             <ul className="space-y-4">
               {invoices.map((inv) => (
-                <li
-                  key={inv.id}
-                  className="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
-                >
+                <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="font-medium text-slate-100">
-                      {inv.issuer}
-                    </span>
+                    <span className="font-medium text-slate-100">{inv.issuer}</span>
                     <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
                       {inv.status}
                     </span>
                   </div>
                   <div className="flex gap-6 text-sm text-slate-400">
-                    <span>
-                      {inv.currency}&nbsp;{inv.amount}
-                    </span>
+                    <span>{inv.currency}&nbsp;{inv.amount}</span>
                     <span>Est. yield&nbsp;{inv.yield}</span>
                     <span>Maturity&nbsp;{inv.dueDate}</span>
                   </div>
