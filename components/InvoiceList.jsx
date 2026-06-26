@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
 import { useEffect, useMemo, useState } from 'react';
 import ErrorBanner from './ErrorBanner';
+import EmptyState, { InvoiceEmptyIllustration } from './EmptyState';
 import InvoiceListSkeleton from './InvoiceListSkeleton';
 import { copy } from '../app/copy/en';
 import { fetchInvestableInvoices } from '../lib/api/invoices';
@@ -9,21 +10,22 @@ import InvoiceSearch from './InvoiceSearch';
 import InvoiceFilters from './InvoiceFilters';
 
 const INVOICE_STATUSES = {
-  PENDING_TOKENIZATION: 'Pending tokenization',
-  TOKENIZED: 'Tokenized',
-  FUNDED: 'Funded',
-  SETTLED: 'Settled',
+  PENDING_TOKENIZATION: "Pending tokenization",
+  TOKENIZED: "Tokenized",
+  FUNDED: "Funded",
+  SETTLED: "Settled",
 };
+
+const user={
+name:'boss'
+}
 
 const STATUS_STYLES = {
   [INVOICE_STATUSES.PENDING_TOKENIZATION]:
-    'bg-amber-500/10 text-amber-200 ring-1 ring-amber-400/20',
-  [INVOICE_STATUSES.TOKENIZED]:
-    'bg-cyan-500/10 text-cyan-200 ring-1 ring-cyan-400/20',
-  [INVOICE_STATUSES.FUNDED]:
-    'bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/20',
-  [INVOICE_STATUSES.SETTLED]:
-    'bg-slate-800/80 text-slate-200 ring-1 ring-slate-500/20',
+    "bg-amber-500/10 text-amber-200 ring-1 ring-amber-400/20",
+  [INVOICE_STATUSES.TOKENIZED]: "bg-cyan-500/10 text-cyan-200 ring-1 ring-cyan-400/20",
+  [INVOICE_STATUSES.FUNDED]: "bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/20",
+  [INVOICE_STATUSES.SETTLED]: "bg-slate-800/80 text-slate-200 ring-1 ring-slate-500/20",
 };
 
 const MOCK_INVOICES = [
@@ -47,20 +49,94 @@ const MOCK_INVOICES = [
   },
 ];
 
+async function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  // Guarded execCommand fallback for browsers without the Clipboard API.
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.setAttribute('readonly', '');
+  el.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand('copy');
+  document.body.removeChild(el);
+}
+
+function AddressCopyButton({ address }) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => clearTimeout(timerRef.current);
+  }, []);
+
+  const handleCopy = async () => {
+    try {
+      await copyToClipboard(address);
+      setCopied(true);
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Copy blocked by browser — fail silently, no error surface.
+    }
+  };
+
+  const display = truncateAddress(address);
+
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      <span
+        className="font-mono text-xs text-slate-400"
+        title={address}
+        aria-label={`Issuer address: ${address}`}
+      >
+        {display}
+      </span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? 'Copied!' : `Copy issuer address ${display}`}
+        title={copied ? 'Copied!' : 'Copy issuer address'}
+        className="inline-flex h-5 w-5 items-center justify-center rounded text-slate-500 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-cyan-400 transition-colors"
+      >
+        {copied ? (
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+        <span className="sr-only">{copied ? 'Copied!' : 'Copy'}</span>
+      </button>
+      {copied && (
+        <span role="status" aria-live="polite" className="text-xs text-emerald-400">
+          Copied!
+        </span>
+      )}
+    </div>
+  );
+}
+
 function loadMockInvoices() {
   return Promise.resolve(MOCK_INVOICES);
 }
 
 function getInvoiceAnnouncement(items) {
   if (!Array.isArray(items)) {
-    return '';
+    return "";
   }
 
   if (items.length === 0) {
-    return 'No invoices are currently available.';
+    return "No invoices are currently available.";
   }
 
-  return `${items.length} invoice${items.length === 1 ? '' : 's'} available.`;
+  return `${items.length} invoice${items.length === 1 ? "" : "s"} available.`;
 }
 
 function mergeInvoices(optimisticInvoices, loadedInvoices) {
@@ -91,6 +167,12 @@ export default function InvoiceList({
     [optimisticInvoices, invoices]
   );
 
+  const statusMessage = useMemo(() => {
+    if (loadError) return loadError;
+    if (invoices === null) return "Loading invoices...";
+    return getInvoiceAnnouncement(mergedInvoices);
+  }, [invoices, mergedInvoices, loadError]);
+
   useEffect(() => {
     let active = true;
 
@@ -107,9 +189,7 @@ export default function InvoiceList({
       } catch (error) {
         if (!active) return;
 
-        setLoadError(
-          copy.invoices.errorDescription || 'Unable to load invoices.'
-        );
+        setLoadError(copy.invoices.errorDescription || "Unable to load invoices.");
         setInvoices([]);
       }
     }
@@ -128,7 +208,7 @@ export default function InvoiceList({
     return (
       <div className="space-y-6">
         <ErrorBanner
-          title={copy.invoices.errorTitle || 'Unable to load invoices'}
+          title={copy.invoices.errorTitle || "Unable to load invoices"}
           description={loadError}
           previewLabel="Invoice list status"
         />
@@ -158,9 +238,19 @@ export default function InvoiceList({
       {invoices === null && mergedInvoices.length === 0 ? (
         <InvoiceListSkeleton rows={3} />
       ) : mergedInvoices.length === 0 ? (
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-10 text-center text-slate-300">
-          {copy.invoices.emptyState}
-        </div>
+        <EmptyState
+          icon={<InvoiceEmptyIllustration />}
+          title="No invoices yet"
+          description="Upload your first invoice to get started. It will appear here once tokenized."
+          action={
+            <a
+              href="#invoice-upload-btn"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-700 bg-cyan-900/30 px-5 py-2.5 text-sm font-semibold text-cyan-300 transition-colors hover:bg-cyan-800/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+            >
+              Upload your first invoice
+            </a>
+          }
+        />
       ) : (
         <ul className="space-y-4">
           {mergedInvoices.map((invoice) => {
@@ -178,9 +268,7 @@ export default function InvoiceList({
                     <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">
                       Invoice
                     </p>
-                    <p className="mt-2 text-lg font-semibold text-slate-100">
-                      {invoice.issuer}
-                    </p>
+                    <p className="mt-2 text-lg font-semibold text-slate-100">{invoice.issuer}</p>
                   </div>
                   <span
                     className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
@@ -193,9 +281,7 @@ export default function InvoiceList({
 
                 <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div>
-                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
-                      Amount
-                    </dt>
+                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Amount</dt>
                     <dd className="mt-2 text-sm text-slate-200">
                       {invoice.currency} {invoice.amount}
                     </dd>
@@ -207,9 +293,7 @@ export default function InvoiceList({
                     <dd className="mt-2 text-sm text-slate-200">{invoice.yield}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">
-                      Due date
-                    </dt>
+                    <dt className="text-xs uppercase tracking-[0.24em] text-slate-500">Due date</dt>
                     <dd className="mt-2 text-sm text-slate-200">{invoice.dueDate}</dd>
                   </div>
                   <div>

@@ -45,50 +45,114 @@ const MOCK_INVOICES = [
   },
 ];
 
-function loadMockInvoices() {
-  return Promise.resolve(MOCK_INVOICES);
+// DEV-only delay (ms) to make the skeleton visible during local development.
+const DEV_DELAY = process.env.NODE_ENV === "development" ? 1500 : 0;
+
+export function getInvoiceLoadAnnouncement(
+  invoices,
+  { filterActive = false, filteredCount = 0 } = {}
+) {
+  if (!Array.isArray(invoices) || invoices.length === 0) {
+    return "No invoices available";
+  }
+  return `${invoices.length} investable invoices loaded`;
 }
 
-function getInvoiceAnnouncement(items) {
-  if (!Array.isArray(items)) {
-    return '';
-  }
-
-  if (items.length === 0) {
-    return 'No invoices are currently available.';
-  }
-
-  return `${items.length} invoice${items.length === 1 ? '' : 's'} available.`;
+export function getPaginationAnnouncement(shown, total) {
+  if (total === 0) return "No invoices available";
+  return `Showing ${shown} of ${total} investable invoices`;
 }
 
-function mergeInvoices(optimisticInvoices, loadedInvoices) {
-  const mergedById = new Map();
+/**
+ * Parse a numeric amount string like "12,500" → 12500.
+ * @param {string} str
+ * @returns {number}
+ */
+function parseAmount(str) {
+  return parseFloat(String(str).replace(/,/g, "")) || 0;
+}
 
-  (optimisticInvoices ?? []).forEach((invoice) => {
-    mergedById.set(invoice.id, invoice);
-  });
+/**
+ * Parse a yield string like "8.2%" → 8.2.
+ * @param {string} str
+ * @returns {number}
+ */
+function parseYield(str) {
+  return parseFloat(String(str).replace(/%/g, "")) || 0;
+}
 
-  (loadedInvoices ?? []).forEach((invoice) => {
-    if (!mergedById.has(invoice.id)) {
-      mergedById.set(invoice.id, invoice);
+/**
+ * Sort a copy of `list` according to the sort column + direction in `filters`.
+ *
+ * Supported columns: "amount", "yield", "maturity".
+ * Direction: "asc" | "desc".
+ *
+ * @param {Array}  list
+ * @param {object} filters
+ * @returns {Array}
+ */
+export function applySortToList(list, filters) {
+  if (!Array.isArray(list) || list.length === 0) return list;
+
+  const { column, dir } = parseSortState(filters);
+  if (!column) return list;
+
+  const multiplier = dir === "asc" ? 1 : -1;
+
+  return [...list].sort((a, b) => {
+    let diff = 0;
+    if (column === "amount") {
+      diff = parseAmount(a.amount) - parseAmount(b.amount);
+    } else if (column === "yield") {
+      diff = parseYield(a.yield) - parseYield(b.yield);
+    } else if (column === "maturity") {
+      diff = new Date(a.dueDate) - new Date(b.dueDate);
     }
+    return multiplier * diff;
   });
-
-  return Array.from(mergedById.values());
 }
 
-export default function InvoiceList({
-  loadInvoices = loadMockInvoices,
-  optimisticInvoices = [],
-}) {
-  const [invoices, setInvoices] = useState(null);
-  const [loadError, setLoadError] = useState('');
+/**
+ * InvestMarketplace – main component for the invest page.
+ *
+ * Fetches invoices via `loadInvoices`, renders them PAGE_SIZE at a time,
+ * and exposes a "Load more" control to append the next batch.  Paging
+ * resets whenever a new invoice set arrives so filter changes stay
+ * non-breaking.
+ *
+ * @param {object}   props
+ * @param {Function} [props.loadInvoices] - Async function that resolves to an
+ *   invoice array.  Defaults to the mock loader; injectable for testing.
+ * @returns {JSX.Element}
+ */
+export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const mergedInvoices = useMemo(
-    () => mergeInvoices(optimisticInvoices, invoices ?? []),
-    [optimisticInvoices, invoices]
-  );
+  const [invoices, setInvoices] = useState(null); // null = loading
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [paginationAnnouncement, setPaginationAnnouncement] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
 
+  const initialSearch = searchParams.get("search") || "";
+  const initialFilters = { ...DEFAULT_FILTERS };
+  for (const key of Object.keys(DEFAULT_FILTERS)) {
+    if (searchParams.has(key)) {
+      initialFilters[key] = searchParams.get(key) || "";
+    }
+  }
+
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialSearch);
+  const [filters, setFilters] = useState(initialFilters);
+
+  /** Ref forwarded to the "Load more" button for focus management. */
+  const loadMoreRef = useRef(null);
+
+  // ──────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     let active = true;
 
@@ -100,15 +164,14 @@ export default function InvoiceList({
         const result = await loadInvoices();
         if (!active) return;
 
-        const normalized = Array.isArray(result) ? result : [];
-        setInvoices(normalized);
-      } catch (error) {
-        if (!active) return;
+        setInvoices(normalizedInvoices);
+        setVisibleCount(PAGE_SIZE);
+      } catch {
+        if (!isActive) return;
 
-        setLoadError(
-          copy.invoices.errorDescription || 'Unable to load invoices.'
-        );
-        setInvoices([]);
+        setInvoices(null);
+        setLoadError(copy.invest.errorDescription);
+        setStatusMessage(copy.invest.errorStatus);
       }
     }
 

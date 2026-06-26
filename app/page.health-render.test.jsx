@@ -1,19 +1,19 @@
-import '@testing-library/jest-dom';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import Home from './page';
+import "@testing-library/jest-dom";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import Home from "./page";
 
-jest.mock('next/navigation', () => ({
-  usePathname: () => '/',
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/",
 }));
 
-jest.mock('../components/WalletStatusLazy', () => ({
+jest.mock("../components/WalletStatusLazy", () => ({
   __esModule: true,
   default: function MockWalletStatusLazy() {
     return <button type="button">Connect Wallet</button>;
   },
 }));
 
-jest.mock('next/link', () => {
+jest.mock("next/link", () => {
   function MockLink({ href, children, ...props }) {
     return (
       <a href={href} {...props}>
@@ -39,12 +39,8 @@ function mockFetchOnce(responseBody, ok = true) {
 }
 
 async function clickCheckHealth() {
-  fireEvent.click(
-    screen.getByRole('button', { name: /check backend health/i }),
-  );
-  await waitFor(() =>
-    expect(screen.queryByText(/checking/i)).not.toBeInTheDocument(),
-  );
+  fireEvent.click(screen.getByRole("button", { name: /check backend health/i }));
+  await waitFor(() => expect(screen.queryByText(/checking/i)).not.toBeInTheDocument());
 }
 
 describe('Home health render', () => {
@@ -78,26 +74,26 @@ describe('Home health render', () => {
 
     const details = document.querySelector('details');
     expect(details).toBeInTheDocument();
-    expect(details).not.toHaveAttribute('open');
+    expect(details).not.toHaveAttribute("open");
 
     expect(screen.getByText(/view details/i)).toBeInTheDocument();
   });
 
-  it('renders payload as text content, not HTML', async () => {
-    mockFetchOnce({ status: 'ok' });
+  it("renders payload as text content, not HTML", async () => {
+    mockFetchOnce({ status: "ok" });
     render(<Home />);
 
     await clickCheckHealth();
 
-    const pre = document.querySelector('pre');
+    const pre = document.querySelector("pre");
     expect(pre).toBeInTheDocument();
-    expect(pre).not.toHaveAttribute('dangerouslySetInnerHTML');
+    expect(pre).not.toHaveAttribute("dangerouslySetInnerHTML");
   });
 
   it('does not truncate long payloads', async () => {
     const largePayload = {
-      status: 'ok',
-      data: 'x'.repeat(5000),
+      status: "ok",
+      data: "x".repeat(5000),
     };
     mockFetchOnce(largePayload);
     render(<Home />);
@@ -119,10 +115,10 @@ describe('Home health render', () => {
     expect(pre.textContent).toContain('"g": "deep"');
   });
 
-  it('does not render health section before check', () => {
+  it("does not render health section before check", () => {
     render(<Home />);
 
-    expect(screen.queryByText(/status:/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/raw response/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByText(/view details/i)).not.toBeInTheDocument();
   });
 });

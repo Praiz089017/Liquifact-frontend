@@ -40,6 +40,7 @@ describe('WalletStatus', () => {
     render(<WalletStatus />);
     expect(screen.getByRole('button', { name: 'Connect Wallet' })).toBeInTheDocument();
   });
+}
 
   it('shows "Install Wallet" button when no wallet is detected', () => {
     mockWalletState(WALLET_STATES.NO_WALLET);

@@ -27,6 +27,9 @@ async function flushTimers(delayMs) {
 describe("WalletStatus", () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    if (typeof window !== "undefined") {
+      window.localStorage.clear();
+    }
   });
 
   afterEach(async () => {
@@ -44,7 +47,7 @@ describe("WalletStatus", () => {
       screen.getByRole("button", { name: /connect wallet/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/connect your stellar wallet/i, { selector: "span" }),
+      screen.getByText(/connect your stellar wallet/i, { selector: "span" })
     ).toBeInTheDocument();
   });
 
