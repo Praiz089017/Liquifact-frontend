@@ -61,9 +61,10 @@ describe('InvoiceDetail accessibility', () => {
 
     const { container } = render(<InvoiceDetail loadInvoice={loadInvoice} />);
 
-    // Wait for the async invoice load
-    const issuerValue = await screen.findByText('Test Issuer LLC');
-    expect(issuerValue).toBeInTheDocument();
+    // Wait for the async invoice load. The issuer appears in both the heading
+    // and the definition list, so anchor on a value that is unique to the dl.
+    const yieldValue = await screen.findByText('8.2%');
+    expect(yieldValue).toBeInTheDocument();
 
     // Definition list structure (term/value pairs)
     expect(screen.getByText('Issuer').tagName).toBe('DT');
@@ -71,7 +72,7 @@ describe('InvoiceDetail accessibility', () => {
     expect(screen.getByText('Estimated yield').tagName).toBe('DT');
     expect(screen.getByText('Maturity date').tagName).toBe('DT');
 
-    expect(screen.getByText('5,000').tagName).toBe('DD');
+    expect(screen.getByText('USD 5,000').tagName).toBe('DD');
     expect(screen.getByText('8.2%').tagName).toBe('DD');
     expect(screen.getByText('2026-12-31').tagName).toBe('DD');
 
