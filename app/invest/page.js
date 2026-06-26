@@ -4,10 +4,10 @@ import Button from '@/components/Button';
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ErrorBanner from "@/components/ErrorBanner";
+import InvoiceCard from "@/components/InvoiceCard";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import Pagination from "@/components/Pagination";
 import { copy } from "../copy/en";
-import { loadMockInvoices } from "./lib";
 
 /**
  * Number of invoices rendered per page.  Export allows tests to reference
@@ -19,36 +19,39 @@ export const PAGE_SIZE = 10;
  * Mock invoice data — replace with real API call once the backend endpoint
  * is available (follow-up: link backend issue here).
  *
- * Contract per item: { id, issuer, amount, currency, dueDate, yield, status }
+ * Shape: { id, issuer, amount, currency, dueDate, yield, status }
+ * See lib/types/invoice.js for the canonical typedef.
  * NOTE: yield values are illustrative; contracts use on-chain basis points and actual settlement is at maturity.
+ *
+ * @type {import('@/lib/types/invoice').Invoice[]}
  */
 const MOCK_INVOICES = [
   {
     id: "inv-001",
     issuer: "Acme Supplies Ltd",
-    amount: "12,500",
+    amount: 12500,
     currency: "USD",
     dueDate: "2026-06-15",
-    yield: "8.2%",
-    status: "Open",
+    yield: 8.2,
+    status: "available",
   },
   {
     id: "inv-002",
     issuer: "Bright Logistics GmbH",
-    amount: "7,800",
+    amount: 7800,
     currency: "EUR",
     dueDate: "2026-07-01",
-    yield: "7.5%",
-    status: "Open",
+    yield: 7.5,
+    status: "available",
   },
   {
     id: "inv-003",
     issuer: "Sunrise Exports Pte",
-    amount: "22,000",
+    amount: 22000,
     currency: "USD",
     dueDate: "2026-05-30",
-    yield: "9.1%",
-    status: "Open",
+    yield: 9.1,
+    status: "available",
   },
 ];
 
@@ -64,20 +67,13 @@ function loadMockInvoices() {
 /**
  * Returns the screen-reader announcement text for the initial invoice load.
  *
- * @param {Array} invoices - The resolved invoice array (may be empty).
+ * @param {import('@/lib/types/invoice').Invoice[]} invoices - The resolved invoice array (may be empty).
  * @returns {string}
  */
 export function getInvoiceLoadAnnouncement(invoices) {
   if (!Array.isArray(invoices) || invoices.length === 0) {
     return "No invoices available";
   }
-
-  if (filterActive) {
-    return filteredCount === 0
-      ? "No invoices match"
-      : `${filteredCount} of ${invoices.length} invoices match`;
-  }
-
   return `${invoices.length} investable invoices loaded`;
 }
 
@@ -111,7 +107,6 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   const [statusMessage, setStatusMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
 
   /** Ref forwarded to the "Load more" button for focus management. */
   const loadMoreRef = useRef(null);
@@ -124,17 +119,14 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
       try {
         const nextInvoices = await loadInvoices();
 
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
         const normalizedInvoices = Array.isArray(nextInvoices) ? nextInvoices : [];
 
         setInvoices(normalizedInvoices);
+        setStatusMessage(getInvoiceLoadAnnouncement(normalizedInvoices));
       } catch {
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
         setInvoices([]);
         setLoadError(copy.invest.errorDescription);
@@ -204,16 +196,21 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
         <div className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6">
           <div className="flex flex-wrap gap-4 items-center">
             {/* Issuer Search */}
-            <InvoiceSearch
-              value={searchQuery}
-              onChange={setSearchQuery}
-            />
+            <div className="flex items-center gap-2">
+              <label htmlFor="issuer-search" className="sr-only">Filter by issuer</label>
+              <input
+                id="issuer-search"
+                type="search"
+                placeholder="Filter by issuer…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+              />
+            </div>
 
             {/* Yield Range Filter */}
             <div className="flex items-center gap-2">
-              <Button variant="secondary" disabled>
-  Coming Soon
-</Button>
+              <Button variant="secondary" disabled>Coming Soon</Button>
               <span className="inline-flex items-center rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-300">Soon</span>
             </div>
 
@@ -290,30 +287,15 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
         ) : invoices === null ? (
           <InvoiceListSkeleton rows={3} />
         ) : invoices.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-300">{copy.invest.emptyState}</div>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-300">
+            {copy.invest.emptyState}
+          </div>
         ) : (
           <>
             <ul className="space-y-4">
               {visibleInvoices.map((inv) => (
-                <li
-                  key={inv.id}
-                  className="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-medium text-slate-100">
-                      {inv.issuer}
-                    </span>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-cyan-900/60 text-cyan-300">
-                      {inv.status}
-                    </span>
-                  </div>
-                  <div className="flex gap-6 text-sm text-slate-300">
-                    <span>
-                      {inv.currency}&nbsp;{inv.amount}
-                    </span>
-                    <span>Est. yield&nbsp;{inv.yield}</span>
-                    <span>Maturity&nbsp;{inv.dueDate}</span>
-                  </div>
+                <li key={inv.id}>
+                  <InvoiceCard invoice={inv} />
                 </li>
               ))}
             </ul>
