@@ -10,6 +10,7 @@ import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
 import React from "react";
+import Link from 'next/link';
 
 // ── Mock RootLayout's external dependencies ───────────────────────────────────
 
@@ -89,7 +90,7 @@ describe("Skip-to-content link", () => {
       <SkipLinkFixture>
         <main id="main-content">
           <a href="/invoices">Invoices</a>
-          <a href="/invest">Invest</a>
+         <Link href="/invest/">Invest</Link>
         </main>
       </SkipLinkFixture>
     );

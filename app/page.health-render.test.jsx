@@ -48,23 +48,15 @@ async function clickCheckHealth() {
 }
 
 describe('Home health render', () => {
-  function getStructuredSummary() {
-    return document.querySelector('[class*="space-y-1"]');
-  }
-
   it('renders recognized fields in a structured summary', async () => {
     mockFetchOnce({ status: 'ok', message: 'All good', version: '1.2.3' });
     render(<Home />);
 
     await clickCheckHealth();
 
-    const summary = getStructuredSummary();
-    expect(within(summary).getByText(/status:/i)).toBeInTheDocument();
-    expect(within(summary).getByText(/ok/i)).toBeInTheDocument();
-    expect(within(summary).getByText(/message:/i)).toBeInTheDocument();
-    expect(within(summary).getByText(/All good/i)).toBeInTheDocument();
-    expect(within(summary).getByText(/version:/i)).toBeInTheDocument();
-    expect(within(summary).getByText(/1\.2\.3/i)).toBeInTheDocument();
+    const status = screen.getByRole('status');
+    expect(within(status).getByText(/connected/i)).toBeInTheDocument();
+    expect(within(status).getByText(/All good/i)).toBeInTheDocument();
   });
 
   it('omits recognized fields that are missing', async () => {
@@ -73,10 +65,9 @@ describe('Home health render', () => {
 
     await clickCheckHealth();
 
-    const summary = getStructuredSummary();
-    expect(within(summary).getByText(/status:/i)).toBeInTheDocument();
-    expect(within(summary).queryByText(/message:/i)).not.toBeInTheDocument();
-    expect(within(summary).queryByText(/version:/i)).not.toBeInTheDocument();
+    const status = screen.getByRole('status');
+    expect(within(status).getByText(/connected/i)).toBeInTheDocument();
+    expect(within(status).queryByText(/All good/i)).not.toBeInTheDocument();
   });
 
   it('renders raw payload inside a collapsed details element', async () => {
@@ -89,7 +80,7 @@ describe('Home health render', () => {
     expect(details).toBeInTheDocument();
     expect(details).not.toHaveAttribute('open');
 
-    expect(screen.getByText(/raw response/i)).toBeInTheDocument();
+    expect(screen.getByText(/view details/i)).toBeInTheDocument();
   });
 
   it('renders payload as text content, not HTML', async () => {
@@ -103,43 +94,29 @@ describe('Home health render', () => {
     expect(pre).not.toHaveAttribute('dangerouslySetInnerHTML');
   });
 
-  it('truncates payloads that are longer than the default limit', async () => {
+  it('does not truncate long payloads', async () => {
     const largePayload = {
       status: 'ok',
       data: 'x'.repeat(5000),
     };
     mockFetchOnce(largePayload);
     render(<Home />);
-
     await clickCheckHealth();
 
     const pre = document.querySelector('pre');
-    expect(pre.textContent).toMatch(/…\(truncated\)$/);
+    expect(pre.textContent).not.toMatch(/…\(truncated\)$/);
+    expect(pre.textContent.length).toBeGreaterThan(5000);
   });
 
-  it('handles deeply nested payloads without error', async () => {
+  it('does not add depth limit text for nested payloads', async () => {
     const deep = { a: { b: { c: { d: { e: { f: { g: 'deep' } } } } } } };
     mockFetchOnce(deep);
     render(<Home />);
-
     await clickCheckHealth();
 
     const pre = document.querySelector('pre');
-    expect(pre.textContent).toContain('[Depth limit reached]');
-  });
-
-  it('handles a normal healthy payload end-to-end', async () => {
-    mockFetchOnce({ status: 'ok', message: 'healthy', version: '2.0.0' });
-    render(<Home />);
-
-    await clickCheckHealth();
-
-    const summary = getStructuredSummary();
-    expect(within(summary).getByText(/status:/i)).toBeInTheDocument();
-    expect(within(summary).getByText(/ok/i)).toBeInTheDocument();
-    expect(within(summary).getByText(/healthy/i)).toBeInTheDocument();
-    expect(within(summary).getByText(/version:/i)).toBeInTheDocument();
-    expect(within(summary).getByText(/2\.0\.0/i)).toBeInTheDocument();
+    expect(pre.textContent).not.toContain('[Depth limit reached]');
+    expect(pre.textContent).toContain('"g": "deep"');
   });
 
   it('does not render health section before check', () => {

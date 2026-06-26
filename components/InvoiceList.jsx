@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import ErrorBanner from './ErrorBanner';
 import InvoiceListSkeleton from './InvoiceListSkeleton';
 import { copy } from '../app/copy/en';
+import { fetchInvestableInvoices } from '../lib/api/invoices';
+import InvoiceSearch from './InvoiceSearch';
+import InvoiceFilters from './InvoiceFilters';
 
 const INVOICE_STATUSES = {
   PENDING_TOKENIZATION: 'Pending tokenization',
@@ -26,7 +29,7 @@ const STATUS_STYLES = {
 const MOCK_INVOICES = [
   {
     id: 'inv-1001',
-    issuer: 'Acme Supplies Ltd',
+    issuer: 'Test Supplier',
     amount: '12,500',
     currency: 'USD',
     dueDate: '2026-06-15',
@@ -35,12 +38,12 @@ const MOCK_INVOICES = [
   },
   {
     id: 'inv-1002',
-    issuer: 'Bright Logistics GmbH',
+    issuer: 'Another LLC',
     amount: '7,800',
     currency: 'EUR',
     dueDate: '2026-07-01',
     yield: '7.5%',
-    status: INVOICE_STATUSES.FUNDED,
+    status: INVOICE_STATUSES.SETTLED,
   },
 ];
 
@@ -76,24 +79,12 @@ function mergeInvoices(optimisticInvoices, loadedInvoices) {
   return Array.from(mergedById.values());
 }
 
-/**
- * InvoiceList — renders a SME invoice list with accessible loading,
- * empty, and error states.
- *
- * @param {object} props
- * @param {Function} [props.loadInvoices] - Async loader that resolves to an
- *   invoice array. Defaults to a mock loader for local development.
- * @param {Array<object>} [props.optimisticInvoices] - Newly submitted invoices
- *   that should appear immediately while backend syncs.
- * @returns {JSX.Element}
- */
 export default function InvoiceList({
   loadInvoices = loadMockInvoices,
   optimisticInvoices = [],
 }) {
   const [invoices, setInvoices] = useState(null);
   const [loadError, setLoadError] = useState('');
-  const [statusMessage, setStatusMessage] = useState('');
 
   const mergedInvoices = useMemo(
     () => mergeInvoices(optimisticInvoices, invoices ?? []),
@@ -102,10 +93,11 @@ export default function InvoiceList({
 
   useEffect(() => {
     let active = true;
-    setInvoices(null);
-    setLoadError('');
 
     async function load() {
+      setInvoices(null);
+      setLoadError('');
+
       try {
         const result = await loadInvoices();
         if (!active) return;
@@ -122,25 +114,15 @@ export default function InvoiceList({
       }
     }
 
-    void load();
+    load();
     return () => {
       active = false;
     };
   }, [loadInvoices]);
 
-  useEffect(() => {
-    if (loadError) {
-      setStatusMessage('Invoice list failed to load.');
-      return;
-    }
-
-    if (invoices === null) {
-      setStatusMessage('Loading invoices.');
-      return;
-    }
-
-    setStatusMessage(getInvoiceAnnouncement(mergedInvoices));
-  }, [invoices, mergedInvoices, loadError]);
+  const statusMessage = loadError
+    ? 'Invoice list failed to load.'
+    : (invoices === null ? 'Loading invoices.' : getInvoiceAnnouncement(mergedInvoices));
 
   if (loadError) {
     return (

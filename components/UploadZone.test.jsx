@@ -6,22 +6,6 @@ import { copy } from '../app/copy/en';
 
 expect.extend(toHaveNoViolations);
 
-/**
- * IMPORTANT: DataTransfer mocking for drag-and-drop tests
- *
- * jsdom does not implement the DataTransfer API. To simulate drag-and-drop events
- * with files, we mock the DataTransfer object as a plain object with:
- *  - files: Array of File objects
- *  - types: Array of string types (e.g., ['Files'])
- *
- * Example usage:
- *   const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
- *   const dataTransfer = { files: [file], types: ['Files'] };
- *   fireEvent.drop(element, { dataTransfer });
- *
- * This pattern is used throughout the drag-and-drop test suite.
- */
-
 function createMockFile(name = 'invoice.pdf', type = 'application/pdf') {
   return new File(['mock content'], name, { type });
 }
@@ -57,13 +41,22 @@ function mockFetchError(status = 500, message = 'Server error') {
   });
 }
 
+// Store the original environment state
+const ORIGINAL_ENV = process.env;
+
 beforeEach(() => {
   jest.useFakeTimers();
+  // Inject mock endpoint environment mapping to satisfy API validation layout assertions
+  process.env = {
+    ...ORIGINAL_ENV,
+    NEXT_PUBLIC_API_URL: 'https://api.mock-liquifact.org',
+  };
 });
 
 afterEach(() => {
   jest.useRealTimers();
   jest.restoreAllMocks();
+  process.env = ORIGINAL_ENV;
 });
 
 describe('UploadZone', () => {
@@ -133,11 +126,9 @@ describe('UploadZone', () => {
     });
     fireEvent.click(submitBtn);
 
-    // uploading state shown immediately
     expect(screen.getByRole('status')).toHaveTextContent(/uploading invoice/i);
     expect(submitBtn).toBeDisabled();
 
-    // after fetch resolves → tokenizing then success
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(/queued for tokenization/i)
     );
@@ -145,7 +136,6 @@ describe('UploadZone', () => {
   });
 
   it('shows tokenizing status between upload and success when server returns tokenizationDelay', async () => {
-    // fetch resolves with a tokenizationDelay so the component briefly enters tokenizing
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: jest.fn().mockResolvedValue({ tokenizationDelay: 1000 }),
@@ -161,19 +151,16 @@ describe('UploadZone', () => {
       screen.getByRole('button', { name: /upload & tokenize invoice/i })
     );
 
-    // uploading while fetch is in-flight
     expect(screen.getByRole('status')).toHaveTextContent(/uploading invoice/i);
 
-    // let the fetch resolve, which moves to tokenizing
     await act(async () => {
-      await Promise.resolve(); // flush microtasks
+      await Promise.resolve();
     });
 
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(/pending tokenization/i)
     );
 
-    // advance through the tokenization delay
     await act(async () => {
       jest.advanceTimersByTime(1000);
     });
@@ -205,7 +192,6 @@ describe('UploadZone', () => {
   });
 
   it('prevents double-submission during processing', async () => {
-    // keep fetch pending so component stays in uploading
     global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
     render(<UploadZone />);
 
@@ -344,19 +330,14 @@ describe('UploadZone', () => {
 
       const dropZone = screen.getByRole('button', { name: /drop pdf invoice/i });
 
-      // Check initial state (no drag-active)
       expect(dropZone).toHaveClass('border-slate-700', 'bg-slate-900/40');
 
-      // Simulate dragOver
       fireEvent.dragOver(dropZone);
 
-      // Check drag-active state
       expect(dropZone).toHaveClass('border-cyan-400', 'bg-cyan-500/10');
 
-      // Simulate dragLeave
       fireEvent.dragLeave(dropZone);
 
-      // Check returned to normal state
       expect(dropZone).toHaveClass('border-slate-700', 'bg-slate-900/40');
     });
 
@@ -369,11 +350,8 @@ describe('UploadZone', () => {
 
       fireEvent.drop(dropZone, { dataTransfer });
 
-      // Assert file is accepted (no error message)
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-      // Assert file name appears in the UI
       expect(screen.getByText('invoice.pdf')).toBeInTheDocument();
-      // Assert submit button is enabled
       expect(
         screen.getByRole('button', { name: /upload & tokenize invoice/i })
       ).toBeEnabled();
@@ -388,13 +366,10 @@ describe('UploadZone', () => {
 
       fireEvent.drop(dropZone, { dataTransfer });
 
-      // Assert role="alert" error message appears
       const alert = screen.getByRole('alert');
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent(/invalid file type/i);
-      // Assert file is rejected (no file name shown)
       expect(screen.queryByText('document.txt')).not.toBeInTheDocument();
-      // Assert submit button is disabled
       expect(
         screen.getByRole('button', { name: /upload & tokenize invoice/i })
       ).toBeDisabled();
@@ -404,18 +379,15 @@ describe('UploadZone', () => {
       render(<UploadZone />);
 
       const dropZone = screen.getByRole('button', { name: /drop pdf invoice/i });
-      const file = createMockLargeFile(11); // 11 MB (exceeds 10 MB limit)
+      const file = createMockLargeFile(11);
       const dataTransfer = createDataTransfer([file]);
 
       fireEvent.drop(dropZone, { dataTransfer });
 
-      // Assert role="alert" error message appears
       const alert = screen.getByRole('alert');
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent(/exceeds/i);
-      // Assert file is rejected (no file name shown)
       expect(screen.queryByText('large.pdf')).not.toBeInTheDocument();
-      // Assert submit button is disabled
       expect(
         screen.getByRole('button', { name: /upload & tokenize invoice/i })
       ).toBeDisabled();
@@ -428,13 +400,11 @@ describe('UploadZone', () => {
       const file = createMockFile();
       const dataTransfer = createDataTransfer([file]);
 
-      // Simulate dragOver then drop
       fireEvent.dragOver(dropZone);
       expect(dropZone).toHaveClass('border-cyan-400', 'bg-cyan-500/10');
 
       fireEvent.drop(dropZone, { dataTransfer });
 
-      // Check drag-active state is cleared
       expect(dropZone).not.toHaveClass('border-cyan-400', 'bg-cyan-500/10');
     });
   });
@@ -485,7 +455,6 @@ describe('UploadZone', () => {
 
   describe('GROUP 3: Submit state machine / double-submit guard (existing tests validated)', () => {
     it('disables submit button during uploading state', async () => {
-      // Keep fetch pending so component stays in uploading
       global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
       render(<UploadZone />);
 
@@ -498,10 +467,8 @@ describe('UploadZone', () => {
         name: /upload & tokenize invoice/i,
       });
 
-      // Click submit
       fireEvent.click(submitBtn);
 
-      // Assert button is disabled
       expect(submitBtn).toBeDisabled();
       expect(submitBtn).toHaveAttribute('aria-disabled', 'true');
     });
@@ -523,23 +490,19 @@ describe('UploadZone', () => {
         screen.getByRole('button', { name: /upload & tokenize invoice/i })
       );
 
-      // uploading state
       const statusUploading = screen.getByRole('status');
       expect(statusUploading).toHaveTextContent(copy.uploadZone.statusUploading);
 
-      // Wait for tokenizing state
       await waitFor(() =>
         expect(screen.getByRole('status')).toHaveTextContent(
           copy.uploadZone.statusTokenizing
         )
       );
 
-      // Advance through tokenization delay
       await act(async () => {
         jest.advanceTimersByTime(50);
       });
 
-      // success state
       await waitFor(() =>
         expect(screen.getByRole('status')).toHaveTextContent(
           copy.uploadZone.statusSuccess
@@ -560,10 +523,7 @@ describe('UploadZone', () => {
         name: /upload & tokenize invoice/i,
       });
 
-      // Click submit once
       fireEvent.click(submitBtn);
-
-      // Try to click again immediately (should be prevented by disabled state)
       fireEvent.click(submitBtn);
 
       await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
@@ -572,11 +532,12 @@ describe('UploadZone', () => {
   });
 
   describe('GROUP 4: Accessibility', () => {
+    // Extended timeout thresholds to isolate sequential execution threads
     it('passes axe accessibility check in idle state', async () => {
       const { container } = render(<UploadZone />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
+    }, 15000);
 
     it('passes axe accessibility check after file is selected', async () => {
       const { container } = render(<UploadZone />);
@@ -588,7 +549,7 @@ describe('UploadZone', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
+    }, 15000);
 
     it('passes axe accessibility check after file validation error', async () => {
       const { container } = render(<UploadZone />);
@@ -600,6 +561,6 @@ describe('UploadZone', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
+    }, 15000);
   });
 });

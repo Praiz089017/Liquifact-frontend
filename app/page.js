@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { copy } from './copy/en';
 import { getHealth } from '../lib/api/health';
+import NavMenu from '../components/NavMenu';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
