@@ -8,6 +8,7 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 
 - [ErrorBanner](#errorbanner)
 - [Footer](#footer)
+- [InvoiceList](#invoicelist)
 - [InvoiceListSkeleton](#invoicelistskeleton)
 - [NavMenu](#navmenu)
 - [ToastProvider / useToast](#toastprovider--usetoast)
@@ -68,6 +69,76 @@ None.
 
 ```jsx
 <Footer />
+```
+
+---
+
+## InvoiceList
+
+Renders the SME invoice list with loading, empty, and error states. Each card that includes an `issuerAddress` field shows a truncated Stellar address with an inline copy button.
+
+**File:** `components/InvoiceList.jsx`
+
+### Props
+
+| Prop                 | Type       | Default          | Description                                                                 |
+| -------------------- | ---------- | ---------------- | --------------------------------------------------------------------------- |
+| `loadInvoices`       | `function` | `loadMockInvoices` | Async loader that resolves to an invoice array                            |
+| `optimisticInvoices` | `array`    | `[]`             | Newly submitted invoices to prepend optimistically before the API responds |
+
+### Invoice object shape
+
+| Field           | Type     | Required | Description                                                     |
+| --------------- | -------- | -------- | --------------------------------------------------------------- |
+| `id`            | `string` | Yes      | Unique identifier                                               |
+| `issuer`        | `string` | Yes      | Display name (company name)                                     |
+| `issuerAddress` | `string` | No       | Stellar public key; when present, shown truncated with copy button |
+| `amount`        | `string` | Yes      | Formatted amount string                                         |
+| `currency`      | `string` | Yes      | ISO currency code                                               |
+| `dueDate`       | `string` | Yes      | ISO-8601 due date                                               |
+| `yield`         | `string` | Yes      | Estimated yield percentage                                      |
+| `status`        | `string` | Yes      | One of: `Pending tokenization`, `Tokenized`, `Funded`, `Settled` |
+
+### Copy-issuer-address button
+
+When `invoice.issuerAddress` is set, each card renders:
+
+- A **truncated** address in head/tail form (`GABCDE…34DE`) via `lib/format/truncateAddress.js`
+- A **copy button** that writes the **full** address to the clipboard
+- A **"Copied!"** confirmation that appears for 2 seconds after a successful copy, announced via `aria-live="polite"`
+- A **guarded fallback** using `document.execCommand('copy')` when `navigator.clipboard` is unavailable
+- Clipboard failures are **silent** — no error banner or toast is shown
+
+### Accessibility
+
+- `role="status"` + `aria-live="polite"` on the "Copied!" confirmation region
+- Copy button `aria-label` includes the truncated address and updates to `"Copied!"` on success
+- `title` attribute on the truncated span exposes the full address as a tooltip
+- `aria-label` on the truncated address span reads the full address for screen readers
+- Copy button is `type="button"` to prevent accidental form submission
+
+### Example
+
+```jsx
+import InvoiceList from '@/components/InvoiceList';
+
+// With API loader
+<InvoiceList loadInvoices={fetchInvoicesFromApi} />
+
+// With optimistic invoice after upload
+<InvoiceList
+  loadInvoices={fetchInvoicesFromApi}
+  optimisticInvoices={[{
+    id: 'upload-xyz',
+    issuer: 'My Company',
+    issuerAddress: 'GABCDE1234FGHIJ5678KLMNO9012PQRST3456UVWXY7890ZABC1234DE',
+    amount: 'Pending',
+    currency: 'USD',
+    dueDate: 'Pending',
+    yield: 'Pending',
+    status: 'Pending tokenization',
+  }]}
+/>
 ```
 
 ---

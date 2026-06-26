@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ErrorBanner from './ErrorBanner';
 import InvoiceListSkeleton from './InvoiceListSkeleton';
 import { copy } from '../app/copy/en';
+import { truncateAddress } from '../lib/format/truncateAddress';
 
 const INVOICE_STATUSES = {
   PENDING_TOKENIZATION: 'Pending tokenization',
@@ -27,6 +28,7 @@ const MOCK_INVOICES = [
   {
     id: 'inv-1001',
     issuer: 'Acme Supplies Ltd',
+    issuerAddress: 'GABCDE1234FGHIJ5678KLMNO9012PQRST3456UVWXY7890ZABC1234DE',
     amount: '12,500',
     currency: 'USD',
     dueDate: '2026-06-15',
@@ -36,6 +38,7 @@ const MOCK_INVOICES = [
   {
     id: 'inv-1002',
     issuer: 'Bright Logistics GmbH',
+    issuerAddress: 'GXYZ781ABCDE234FGHIJ567KLMNO890PQRST123UVWXY456ZABC789FG',
     amount: '7,800',
     currency: 'EUR',
     dueDate: '2026-07-01',
@@ -43,6 +46,80 @@ const MOCK_INVOICES = [
     status: INVOICE_STATUSES.FUNDED,
   },
 ];
+
+async function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  // Guarded execCommand fallback for browsers without the Clipboard API.
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.setAttribute('readonly', '');
+  el.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand('copy');
+  document.body.removeChild(el);
+}
+
+function AddressCopyButton({ address }) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => clearTimeout(timerRef.current);
+  }, []);
+
+  const handleCopy = async () => {
+    try {
+      await copyToClipboard(address);
+      setCopied(true);
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Copy blocked by browser — fail silently, no error surface.
+    }
+  };
+
+  const display = truncateAddress(address);
+
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      <span
+        className="font-mono text-xs text-slate-400"
+        title={address}
+        aria-label={`Issuer address: ${address}`}
+      >
+        {display}
+      </span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? 'Copied!' : `Copy issuer address ${display}`}
+        title={copied ? 'Copied!' : 'Copy issuer address'}
+        className="inline-flex h-5 w-5 items-center justify-center rounded text-slate-500 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-cyan-400 transition-colors"
+      >
+        {copied ? (
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+        <span className="sr-only">{copied ? 'Copied!' : 'Copy'}</span>
+      </button>
+      {copied && (
+        <span role="status" aria-live="polite" className="text-xs text-emerald-400">
+          Copied!
+        </span>
+      )}
+    </div>
+  );
+}
 
 function loadMockInvoices() {
   return Promise.resolve(MOCK_INVOICES);
@@ -200,6 +277,9 @@ export default function InvoiceList({
                     <p className="mt-2 text-lg font-semibold text-slate-100">
                       {invoice.issuer}
                     </p>
+                    {invoice.issuerAddress && (
+                      <AddressCopyButton address={invoice.issuerAddress} />
+                    )}
                   </div>
                   <span
                     className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
