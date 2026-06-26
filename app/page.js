@@ -1,9 +1,43 @@
-'use client';
+﻿"use client";
 
 import { useState } from 'react';
-import { copy } from './copy/en';
+import Link from 'next/link';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { copy } from './copy/en';
+import { getHealth } from '../lib/api/health';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+// Status mapping to visual states
+// Maps getHealth return values to badge styles and labels
+const getStatusConfig = (status) => {
+  switch (status) {
+    case 'connected':
+      return {
+        label: copy.home.healthStatus.connected,
+        badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        icon: '✓',
+      };
+    case 'degraded':
+      return {
+        label: copy.home.healthStatus.degraded,
+        badgeClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        icon: '⚠',
+      };
+    case 'unreachable':
+      return {
+        label: copy.home.healthStatus.unreachable,
+        badgeClass: 'bg-red-500/10 text-red-400 border-red-500/20',
+        icon: '✕',
+      };
+    default:
+      return {
+        label: status,
+        badgeClass: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+        icon: '?',
+      };
+  }
+};
 
 export default function Home() {
   const [health, setHealth] = useState(null);
@@ -11,71 +45,82 @@ export default function Home() {
 
   const checkApi = async () => {
     setLoading(true);
+
     try {
-      const res = await fetch(`${API_URL}/health`);
-      const data = await res.json();
-      setHealth(data);
-    } catch (e) {
-      setHealth({ status: 'error', message: e.message });
+      const result = await getHealth(API_URL);
+      setHealth(result);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-        <span className="text-xl font-semibold tracking-tight">LiquiFact</span>
-        <button
-          type="button"
-          className="rounded-full bg-cyan-500/20 text-cyan-400 px-4 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors"
-        >
-          {copy.layout.connectWallet}
-        </button>
-      </header>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      {/* Shared site header for the home page and the rest of the app. */}
+      <NavMenu />
 
-      <main className="max-w-4xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold tracking-tight mb-4">
-          {copy.home.heroTitle}
-        </h1>
-        <p className="text-slate-400 text-lg mb-12 max-w-2xl">
-          {copy.home.heroSub}
-        </p>
+      <main id="main-content" className="max-w-4xl mx-auto px-6 py-16">
+        <h1 className="text-4xl font-bold tracking-tight mb-4">{copy.home.heroTitle}</h1>
+        <p className="text-slate-400 text-lg mb-12 max-w-2xl">{copy.home.heroSub}</p>
 
         <div className="grid gap-6 sm:grid-cols-2 mb-12">
-          <a
+          <Link
             href="/invoices"
-            className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors"
+            className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
           >
             <h2 className="text-lg font-semibold text-cyan-400 mb-2">{copy.home.boxBusinessTitle}</h2>
             <p className="text-slate-400 text-sm">{copy.home.boxBusinessSub}</p>
-          </a>
-          <a
+          </Link>
+          <Link
             href="/invest"
-            className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors"
+            className="block rounded-xl border border-slate-700 bg-slate-900/50 p-6 hover:border-cyan-500/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
           >
             <h2 className="text-lg font-semibold text-cyan-400 mb-2">{copy.home.boxInvestTitle}</h2>
             <p className="text-slate-400 text-sm">{copy.home.boxInvestSub}</p>
-          </a>
+          </Link>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-6">
-          <h2 className="text-sm font-medium text-slate-400 mb-2">API status</h2>
+          <h2 className="text-sm font-medium text-slate-400 mb-2">{copy.home.apiStatus}</h2>
           <button
             type="button"
             onClick={checkApi}
             disabled={loading}
-            className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
+            className="rounded-lg cursor-pointer bg-slate-800 px-4 py-3 text-sm font-medium hover:bg-slate-700 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
           >
-            {loading ? 'Checking…' : 'Check backend health'}
+            {loading ? copy.home.checking : copy.home.checkApiHealth}
           </button>
-          {health && (
-            <pre className="mt-4 p-4 rounded-lg bg-slate-950 text-xs text-slate-300 overflow-auto">
-              {JSON.stringify(health, null, 2)}
-            </pre>
+          {!loading && health && (
+            <div className="mt-4">
+              {/* Structured health status card with color-coded badge */}
+              {/* Status changes are announced politely via aria-live="polite" */}
+              <div role="status" aria-live="polite" className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  {/* Color-coded badge with icon and text - not color-only for accessibility */}
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${getStatusConfig(health.status).badgeClass}`}>
+                    <span aria-hidden="true">{getStatusConfig(health.status).icon}</span>
+                    <span>{getStatusConfig(health.status).label}</span>
+                  </span>
+                </div>
+                <p className="text-sm text-slate-300">{health.message}</p>
+                
+                {/* Details disclosure - keeps raw payload behind expandable section */}
+                {health.details && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-sm text-slate-400 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">
+                      {copy.home.healthStatus.viewDetails}
+                    </summary>
+                    <pre className="mt-2 text-xs text-slate-400 bg-slate-900/50 p-3 rounded overflow-x-auto">
+                      {JSON.stringify(health.details, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </main>
     </div>
   );
 }
+

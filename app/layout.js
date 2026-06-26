@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Footer from "../components/Footer";
 import { ToastProvider } from "../components/ToastProvider";
+import { WalletProvider } from "../components/WalletProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,8 +25,14 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* Skip link: first focusable element so keyboard users can bypass the header */}
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
         <ToastProvider>
-          {children}
+          <WalletProvider>
+            {children}
+          </WalletProvider>
         </ToastProvider>
         <Footer />
       </body>

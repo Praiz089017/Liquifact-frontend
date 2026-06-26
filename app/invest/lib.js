@@ -1,18 +1,59 @@
 /**
- * Returns the number of whole days between `now` and `maturityDate`.
- * Positive  → matures in N days
- * Zero      → matures today
- * Negative  → overdue by N days
+ * Mock invoice data — replace with real API call once the backend endpoint
+ * is available (follow-up: link backend issue here).
  *
- * @param {string} maturityDate - ISO-8601 date string (e.g. "2026-07-01")
- * @param {Date}   now          - reference date (defaults to today; pass in for testability)
- * @returns {number}
+ * Contract per item: { id, issuer, amount, currency, dueDate, yield, status }
+ * NOTE: yield values are illustrative; contracts use on-chain basis points and
+ * actual settlement is at maturity.
  */
-export function daysUntilMaturity(maturityDate, now = new Date()) {
-  const maturity = new Date(maturityDate);
-  const todayMs =
-    Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const maturityMs =
-    Date.UTC(maturity.getFullYear(), maturity.getMonth(), maturity.getDate());
-  return Math.round((maturityMs - todayMs) / 86_400_000);
+export const MOCK_INVOICES = [
+  {
+    id: 'inv-001',
+    issuer: 'Acme Supplies Ltd',
+    amount: '12,500',
+    currency: 'USD',
+    dueDate: '2026-06-15',
+    yield: '8.2%',
+    status: 'Open',
+  },
+  {
+    id: 'inv-002',
+    issuer: 'Bright Logistics GmbH',
+    amount: '7,800',
+    currency: 'EUR',
+    dueDate: '2026-07-01',
+    yield: '7.5%',
+    status: 'Open',
+  },
+  {
+    id: 'inv-003',
+    issuer: 'Sunrise Exports Pte',
+    amount: '22,000',
+    currency: 'USD',
+    dueDate: '2026-05-30',
+    yield: '9.1%',
+    status: 'Open',
+  },
+];
+
+// DEV-only delay (ms) to make the skeleton visible during local development.
+const DEV_DELAY = process.env.NODE_ENV === 'development' ? 1500 : 0;
+
+export function loadMockInvoices() {
+  if (typeof window !== 'undefined' && window.__TEST_MOCK_INVOICES__) {
+    return Promise.resolve(window.__TEST_MOCK_INVOICES__);
+  }
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(MOCK_INVOICES), DEV_DELAY);
+  });
+}
+
+/**
+ * Resolve an invoice by its id from the current mock invoice list.
+ *
+ * @param {string} id - Invoice identifier to look up.
+ * @returns {object | undefined} The matching invoice object, or undefined if no invoice exists with the given id.
+ */
+export function getInvoiceById(id) {
+  return MOCK_INVOICES.find((invoice) => invoice.id === id);
 }
