@@ -220,7 +220,7 @@ For frontend/backend contract details see:
 
 Default: [http://localhost:3000](http://localhost:3000). The home page can check API health at `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`).
 
-The home page header is composed with the shared `NavMenu` component so it uses the same single navigation header as the rest of the app instead of bespoke header markup.
+The invoices page header also uses the shared `NavMenu` component, replacing the old bespoke header so navigation and wallet entry stay consistent across routes.
 
 ### Marketplace search
 

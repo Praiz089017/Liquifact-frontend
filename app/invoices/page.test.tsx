@@ -3,6 +3,17 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import InvoicesPage from './page';
 
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/invoices',
+}));
+
+jest.mock('../../components/WalletStatusLazy', () => ({
+  __esModule: true,
+  default: function MockWalletStatusLazy() {
+    return <button type="button">Connect Wallet</button>;
+  },
+}));
+
 describe('InvoicesPage', () => {
   it('renders the heading and subtext from copy.invoices', () => {
     render(<InvoicesPage />);
@@ -12,18 +23,30 @@ describe('InvoicesPage', () => {
     expect(subtext).toBeInTheDocument();
   });
 
-  it('renders the back-link with correct href and a11y outline class', () => {
+  it('renders the shared header as the only banner landmark', () => {
     render(<InvoicesPage />);
-    const backlink = screen.getByRole('link', { name: /liquifact/i });
-    expect(backlink).toHaveAttribute('href', '/');
-    expect(backlink.className).toMatch(/focus-visible:outline/);
+
+    expect(screen.getAllByRole('banner')).toHaveLength(1);
+    expect(document.querySelectorAll('header')).toHaveLength(1);
   });
 
-  it('renders the Connect Wallet button with the correct style', () => {
+  it('renders shared navigation links and keeps the home link focusable', () => {
     render(<InvoicesPage />);
-    const button = screen.getByRole('button', { name: /connect wallet/i });
-    expect(button).toBeInTheDocument();
-    expect(button.className).toMatch(/focus-visible:outline/);
+
+    const navigation = screen.getByRole('navigation', { name: /main navigation/i });
+    const homeLink = screen.getByRole('link', { name: /^home$/i });
+
+    expect(navigation).toBeInTheDocument();
+    expect(homeLink).toHaveAttribute('href', '/');
+    expect(homeLink.className).toMatch(/focus-visible:outline/);
+    expect(screen.getByRole('link', { name: /^invoices$/i })).toHaveAttribute('href', '/invoices');
+    expect(screen.getByRole('link', { name: /^invest$/i })).toHaveAttribute('href', '/invest');
+  });
+
+  it('does not render the old static connect wallet button from the bespoke header', () => {
+    render(<InvoicesPage />);
+
+    expect(screen.getAllByRole('button', { name: /connect wallet/i })).toHaveLength(2);
   });
 
   it('renders the UploadZone form and input/button by id', () => {
