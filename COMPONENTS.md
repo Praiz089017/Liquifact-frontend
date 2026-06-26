@@ -12,6 +12,7 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [InvoiceList](#invoicelist)
 - [InvoiceListSkeleton](#invoicelistskeleton)
 - [NavMenu](#navmenu)
+- [ThemeToggle](#themetoggle)
 - [ToastProvider / useToast](#toastprovider--usetoast)
 - [UploadZone](#uploadzone)
 - [WalletStatus](#walletstatus)
@@ -431,13 +432,85 @@ import WalletStatus from "@/components/WalletStatus";
 
 ---
 
+## ThemeToggle
+
+A button that cycles through **light → dark → system** theme preferences, persists the choice to `localStorage`, and applies a `data-theme` attribute on `<html>` so CSS tokens update instantly.
+
+**File:** `components/ThemeToggle.jsx`
+
+### Named exports
+
+| Export              | Description                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| `default` (`ThemeToggle`) | The toggle button component                                                       |
+| `THEMES`            | `['light', 'dark', 'system']` — the ordered cycle                                      |
+| `THEME_STORAGE_KEY` | `localStorage` key used to persist the preference                                       |
+| `resolveTheme(pref)`| Maps a preference string to `'light'` or `'dark'` (resolves `'system'` via `matchMedia`) |
+| `readStoredTheme()` | Reads from `localStorage`, returning `'system'` as fallback                             |
+| `applyTheme(pref)`  | Sets `data-theme` on `document.documentElement`                                         |
+
+### Props
+
+| Prop        | Type     | Default | Description                              |
+| ----------- | -------- | ------- | ---------------------------------------- |
+| `className` | `string` | `''`    | Extra classes forwarded to the root `<button>` |
+
+### How it works
+
+1. **Pre-paint inline script** in `app/layout.js` reads `localStorage` before React hydrates and sets `data-theme` on `<html>` via `dangerouslySetInnerHTML`. This eliminates the flash of incorrect theme on first load.
+2. **On mount**, the component reads the stored preference and syncs React state.
+3. **On click**, cycles `system → light → dark → system`, writes to `localStorage`, and calls `applyTheme`.
+4. **OS change listener**: when preference is `'system'`, a `matchMedia` listener re-applies the theme if the user toggles their OS setting.
+
+### Theme cycle
+
+```
+system (monitor icon)  →  light (sun icon)  →  dark (moon icon)  →  system …
+```
+
+### Accessibility
+
+- `aria-label` describes the **current** theme and the next option (e.g. `"Theme: Dark (click for System)"`).
+- `aria-pressed` is `true` for explicit `light`/`dark` choices and `false` for `system`.
+- All SVG icons carry `aria-hidden="true"` and `focusable="false"`.
+- Button has `id="theme-toggle"` for automated testing and skip-link targeting.
+- Keyboard-focusable with `focus-visible:outline` following the site ring pattern.
+
+### CSS tokens consumed
+
+| Token            | Dark (`[data-theme="dark"]`) | Light (`[data-theme="light"]`) |
+| ---------------- | ---------------------------- | ------------------------------ |
+| `--color-bg`     | `#020617` (slate-950)        | `#f8fafc` (slate-50)           |
+| `--color-fg`     | `#f1f5f9` (slate-100)        | `#0f172a` (slate-900)          |
+| `--color-muted`  | `#94a3b8` (slate-400)        | `#64748b` (slate-500)          |
+| `--color-surface`| `#0f172a` (slate-900)        | `#ffffff` (white)              |
+| `--color-border` | `#1e293b` (slate-800)        | `#e2e8f0` (slate-200)          |
+| `--color-primary`| `#22d3ee` (cyan-400)         | `#0891b2` (cyan-600)           |
+
+### Example
+
+```jsx
+import ThemeToggle from '@/components/ThemeToggle';
+
+// Renders inside any layout — no provider required
+<ThemeToggle />
+
+// With extra positioning class
+<ThemeToggle className="ml-4" />
+```
+
+---
+
 ## Design tokens
 
-Global tokens defined in `app/globals.css` and used across all components.
+Global tokens defined in `app/globals.css` and driven by the `[data-theme]` attribute (set by `ThemeToggle`).
 
-| Token             | Value     | Tailwind equivalent |
-| ----------------- | --------- | ------------------- |
-| `--color-bg`      | `#020617` | `slate-950`         |
-| `--color-primary` | `#22d3ee` | `cyan-400`          |
+| Token             | Dark value          | Light value         |
+| ----------------- | ------------------- | ------------------- |
+| `--color-bg`      | `#020617` slate-950 | `#f8fafc` slate-50  |
+| `--color-fg`      | `#f1f5f9` slate-100 | `#0f172a` slate-900 |
+| `--color-primary` | `#22d3ee` cyan-400  | `#0891b2` cyan-600  |
 
-Font: **Geist** via `@fontsource/geist`. Headings use `font-bold`; body copy uses the default weight.
+Dark is the `:root` default (backwards-compatible). Light overrides activate via `[data-theme="light"]`.
+
+Font: **Geist** via `next/font/google`. Headings use `font-bold`; body copy uses the default weight.
