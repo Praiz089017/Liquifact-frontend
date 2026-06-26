@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { act, render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent, within } from "@testing-library/react";
 import {
   getInvoiceLoadAnnouncement,
   getPaginationAnnouncement,
@@ -61,6 +61,12 @@ function makeInvoices(count) {
     yield: "5.0%",
     status: "Open",
   }));
+}
+
+function getInvoiceListItems() {
+  return within(screen.getByRole("list", { name: /investable invoices/i })).getAllByRole(
+    "listitem",
+  );
 }
 
 // ── Existing tests (unchanged) ─────────────────────────────────────────────
@@ -132,7 +138,7 @@ describe("InvestMarketplace", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "3 investable invoices loaded",
     );
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(getInvoiceListItems()).toHaveLength(3);
     expect(screen.getByRole("status")).toHaveAttribute(
       "aria-live",
       "polite",
@@ -172,7 +178,7 @@ describe("InvestMarketplace", () => {
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
 
-    const listItems = screen.getAllByRole("listitem");
+    const listItems = getInvoiceListItems();
     expect(listItems).toHaveLength(2);
     expect(listItems[0]).toHaveTextContent("Acme Supplies Ltd");
     expect(listItems[1]).toHaveTextContent("Bright Logistics GmbH");
@@ -222,7 +228,7 @@ describe("InvestMarketplace", () => {
     render(<InvestMarketplace loadInvoices={loadInvoices} />);
     await flushTimers(50);
 
-    expect(screen.getAllByRole("listitem")).toHaveLength(PAGE_SIZE);
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
   });
 
   it("shows the Load-more button when there are more items than PAGE_SIZE", async () => {
@@ -246,7 +252,7 @@ describe("InvestMarketplace", () => {
     await flushTimers(50);
 
     // Initially PAGE_SIZE items
-    expect(screen.getAllByRole("listitem")).toHaveLength(PAGE_SIZE);
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /load more invoices/i }));
@@ -256,7 +262,7 @@ describe("InvestMarketplace", () => {
     });
 
     // All 13 items visible
-    expect(screen.getAllByRole("listitem")).toHaveLength(total);
+    expect(getInvoiceListItems()).toHaveLength(total);
   });
 
   it("hides Load-more button when all items are visible after clicking", async () => {
@@ -307,7 +313,7 @@ describe("InvestMarketplace", () => {
     expect(
       screen.queryByRole("button", { name: /load more invoices/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getAllByRole("listitem")).toHaveLength(PAGE_SIZE - 1);
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE - 1);
   });
 
   it("does not show Load-more when total equals exactly PAGE_SIZE", async () => {
@@ -320,7 +326,7 @@ describe("InvestMarketplace", () => {
     expect(
       screen.queryByRole("button", { name: /load more invoices/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getAllByRole("listitem")).toHaveLength(PAGE_SIZE);
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE);
   });
 
   it("shows only the remaining items on the last page click", async () => {
@@ -339,7 +345,7 @@ describe("InvestMarketplace", () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
     });
-    expect(screen.getAllByRole("listitem")).toHaveLength(PAGE_SIZE * 2);
+    expect(getInvoiceListItems()).toHaveLength(PAGE_SIZE * 2);
 
     // Page 2 → Page 3 (last page — only remainder items remain)
     await act(async () => {
@@ -347,7 +353,7 @@ describe("InvestMarketplace", () => {
       jest.advanceTimersByTime(0);
       await Promise.resolve();
     });
-    expect(screen.getAllByRole("listitem")).toHaveLength(total);
+    expect(getInvoiceListItems()).toHaveLength(total);
     expect(
       screen.queryByRole("button", { name: /load more invoices/i }),
     ).not.toBeInTheDocument();
@@ -390,7 +396,7 @@ describe("InvestMarketplace", () => {
 
     fireEvent.click(screen.getByLabelText("Filter by EUR"));
 
-    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(getInvoiceListItems()).toHaveLength(1);
     expect(screen.getByText("B")).toBeInTheDocument();
   });
 
@@ -406,7 +412,7 @@ describe("InvestMarketplace", () => {
 
     fireEvent.change(screen.getByLabelText("Minimum yield percentage"), { target: { value: "6" } });
 
-    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(getInvoiceListItems()).toHaveLength(2);
     expect(screen.getByText("B")).toBeInTheDocument();
     expect(screen.getByText("C")).toBeInTheDocument();
   });
@@ -422,7 +428,7 @@ describe("InvestMarketplace", () => {
 
     fireEvent.change(screen.getByLabelText("Maturity date from"), { target: { value: "2026-07-01" } });
 
-    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(getInvoiceListItems()).toHaveLength(1);
     expect(screen.getByText("B")).toBeInTheDocument();
   });
 
@@ -438,7 +444,7 @@ describe("InvestMarketplace", () => {
 
     fireEvent.change(screen.getByLabelText("Sort options"), { target: { value: "yield_desc" } });
 
-    const items = screen.getAllByRole("listitem");
+    const items = getInvoiceListItems();
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent("9%");
     expect(items[1]).toHaveTextContent("7%");
@@ -463,7 +469,7 @@ describe("InvestMarketplace", () => {
     fireEvent.click(screen.getByLabelText("Filter by EUR"));
 
     expect(screen.getByText("No invoices match your filters.")).toBeInTheDocument();
-    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: /investable invoices/i })).not.toBeInTheDocument();
   });
 
   it("clears all filters and restores full list", async () => {
@@ -476,10 +482,10 @@ describe("InvestMarketplace", () => {
     await flushTimers(0);
 
     fireEvent.click(screen.getByLabelText("Filter by EUR"));
-    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(getInvoiceListItems()).toHaveLength(1);
 
     fireEvent.click(screen.getByLabelText("Clear all filters"));
-    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(getInvoiceListItems()).toHaveLength(2);
   });
 
   it("announces filtered results in the live region", async () => {
@@ -548,7 +554,7 @@ describe("InvestPage", () => {
     await flushTimers(0);
 
     expect(screen.getByRole("heading", { name: /invest/i })).toBeInTheDocument();
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(getInvoiceListItems()).toHaveLength(3);
   });
 });
 

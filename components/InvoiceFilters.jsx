@@ -11,6 +11,24 @@ export const DEFAULT_FILTERS = {
   sort: '',
 };
 
+export const SORT_OPTIONS = [
+  { value: '', label: 'Sort By' },
+  { value: 'yield_desc', label: 'Best Yield' },
+  { value: 'yield_asc', label: 'Lowest Yield' },
+  { value: 'amount_desc', label: 'Highest Amount' },
+  { value: 'amount_asc', label: 'Lowest Amount' },
+  { value: 'maturity_asc', label: 'Earliest Maturity' },
+  { value: 'maturity_desc', label: 'Latest Maturity' },
+];
+
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF'];
+
+/**
+ * Returns true when any structured filter field is set (excludes search query).
+ *
+ * @param {typeof DEFAULT_FILTERS} filters
+ * @returns {boolean}
+ */
 export function hasActiveFilters(filters) {
   return (
     filters.yieldMin !== '' ||
@@ -22,17 +40,181 @@ export function hasActiveFilters(filters) {
   );
 }
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF'];
+/**
+ * Returns true when search or structured filters are active.
+ *
+ * @param {typeof DEFAULT_FILTERS} filters
+ * @param {string} [searchQuery='']
+ * @returns {boolean}
+ */
+export function hasAnyActiveFilters(filters, searchQuery = '') {
+  return hasActiveFilters(filters) || Boolean(searchQuery.trim());
+}
 
-const SORT_OPTIONS = [
-  { value: '', label: 'Sort By' },
-  { value: 'yield_desc', label: 'Best Yield' },
-  { value: 'yield_asc', label: 'Lowest Yield' },
-  { value: 'amount_desc', label: 'Highest Amount' },
-  { value: 'amount_asc', label: 'Lowest Amount' },
-  { value: 'maturity_asc', label: 'Earliest Maturity' },
-  { value: 'maturity_desc', label: 'Latest Maturity' },
-];
+/**
+ * Builds the visible results summary line.
+ *
+ * @param {number} shown - Invoices currently visible (after pagination).
+ * @param {number} total - Total invoices matching the current filters.
+ * @returns {string}
+ */
+export function getResultsSummaryText(shown, total) {
+  return `Showing ${shown} of ${total} invoices`;
+}
+
+/**
+ * Describes a single removable active filter chip.
+ *
+ * @typedef {Object} ActiveFilterChip
+ * @property {string} key - Stable React key.
+ * @property {string} label - Visible chip label.
+ * @property {string} clearKey - Key passed to onRemoveFilter ('search' or a filter field).
+ */
+
+/**
+ * Returns removable chips for each active filter and the search query.
+ *
+ * @param {typeof DEFAULT_FILTERS} filters
+ * @param {string} [searchQuery='']
+ * @returns {ActiveFilterChip[]}
+ */
+export function getActiveFilterChips(filters, searchQuery = '') {
+  /** @type {ActiveFilterChip[]} */
+  const chips = [];
+
+  const trimmedSearch = searchQuery.trim();
+  if (trimmedSearch) {
+    chips.push({
+      key: 'search',
+      label: `Search: ${trimmedSearch}`,
+      clearKey: 'search',
+    });
+  }
+
+  if (filters.yieldMin !== '') {
+    chips.push({
+      key: 'yieldMin',
+      label: `Min yield: ${filters.yieldMin}%`,
+      clearKey: 'yieldMin',
+    });
+  }
+
+  if (filters.yieldMax !== '') {
+    chips.push({
+      key: 'yieldMax',
+      label: `Max yield: ${filters.yieldMax}%`,
+      clearKey: 'yieldMax',
+    });
+  }
+
+  if (filters.currency !== '') {
+    chips.push({
+      key: 'currency',
+      label: `Currency: ${filters.currency}`,
+      clearKey: 'currency',
+    });
+  }
+
+  if (filters.maturityFrom !== '') {
+    chips.push({
+      key: 'maturityFrom',
+      label: `From: ${filters.maturityFrom}`,
+      clearKey: 'maturityFrom',
+    });
+  }
+
+  if (filters.maturityTo !== '') {
+    chips.push({
+      key: 'maturityTo',
+      label: `To: ${filters.maturityTo}`,
+      clearKey: 'maturityTo',
+    });
+  }
+
+  if (filters.sort !== '') {
+    const sortLabel =
+      SORT_OPTIONS.find((opt) => opt.value === filters.sort)?.label ?? filters.sort;
+    chips.push({
+      key: 'sort',
+      label: `Sort: ${sortLabel}`,
+      clearKey: 'sort',
+    });
+  }
+
+  return chips;
+}
+
+/**
+ * Returns a copy of filters with a single field cleared.
+ *
+ * @param {typeof DEFAULT_FILTERS} filters
+ * @param {string} clearKey
+ * @returns {typeof DEFAULT_FILTERS}
+ */
+export function clearFilterByKey(filters, clearKey) {
+  if (clearKey === 'search') {
+    return filters;
+  }
+
+  return { ...filters, [clearKey]: '' };
+}
+
+/**
+ * Visible results count and removable active-filter chips for the marketplace.
+ *
+ * @param {Object} props
+ * @param {number} props.shown - Invoices currently visible.
+ * @param {number} props.totalFiltered - Total invoices matching filters.
+ * @param {typeof DEFAULT_FILTERS} props.filters
+ * @param {string} props.searchQuery
+ * @param {(clearKey: string) => void} props.onRemoveFilter
+ * @param {() => void} props.onClearAll
+ */
+export function ActiveFilterSummary({
+  shown,
+  totalFiltered,
+  filters,
+  searchQuery,
+  onRemoveFilter,
+  onClearAll,
+}) {
+  const chips = getActiveFilterChips(filters, searchQuery);
+  const hasChips = chips.length > 0;
+
+  return (
+    <div className="mb-4 space-y-3">
+      <p className="text-sm text-slate-400">{getResultsSummaryText(shown, totalFiltered)}</p>
+
+      {hasChips ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <ul className="flex flex-wrap gap-2 list-none p-0 m-0" aria-label="Active filters">
+            {chips.map((chip) => (
+              <li key={chip.key}>
+                <button
+                  type="button"
+                  onClick={() => onRemoveFilter(chip.clearKey)}
+                  className="inline-flex items-center gap-1 rounded-full border border-cyan-700/60 bg-cyan-900/20 px-3 py-1 text-xs text-cyan-300 transition-colors hover:bg-cyan-900/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                  aria-label={`Remove ${chip.label}`}
+                >
+                  <span>{chip.label}</span>
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <button
+            type="button"
+            onClick={onClearAll}
+            className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-1 text-xs text-cyan-400 transition-colors hover:bg-slate-700/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+          >
+            Clear all
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export default function InvoiceFilters({ filters, onFilterChange, onClearFilters }) {
   const handleChange = useCallback(
