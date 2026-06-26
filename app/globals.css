@@ -74,3 +74,31 @@ body {
   border-radius: 0.25rem;
 }
 
+/*
+ * Reduced-motion accessibility: users who set "prefers-reduced-motion: reduce"
+ * in their OS/browser get continuous animations (animate-spin, animate-pulse)
+ * replaced with static or minimal alternatives. Loading states remain visually
+ * present — only the motion is removed. aria-busy / role="status" semantics
+ * are untouched, so assistive-technology users are unaffected.
+ */
+@media (prefers-reduced-motion: reduce) {
+  /* Stop spinner rotation; the SVG shape remains visible as a static indicator */
+  .animate-spin {
+    animation: none;
+  }
+
+  /* Stop pulse shimmer; skeleton shapes stay visible with reduced opacity */
+  .animate-pulse {
+    animation: none;
+    opacity: 0.7;
+  }
+
+  /* Suppress any other transition-based motion globally */
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
