@@ -52,6 +52,7 @@ export default function RootLayout({ children }) {
         eliminating the flash of incorrect theme (FOIT-equivalent for themes).
       */}
       <head>
+        {/* eslint-disable-next-line react/no-danger -- Static constant; not user-supplied data. Required for pre-hydration theme paint. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body
