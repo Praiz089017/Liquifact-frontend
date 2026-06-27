@@ -11,6 +11,7 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [Footer](#footer)
 - [InvoiceList](#invoicelist)
 - [InvoiceListSkeleton](#invoicelistskeleton)
+- [InvoiceSearch](#invoicesearch)
 - [NavMenu](#navmenu)
 - [ThemeToggle](#themetoggle)
 - [ToastProvider / useToast](#toastprovider--usetoast)
@@ -231,6 +232,48 @@ Animated placeholder list rendered while invoice data is loading. Mirrors the sh
 
 // custom row count
 <InvoiceListSkeleton rows={5} />
+```
+
+---
+
+## InvoiceSearch
+
+Controlled search input for filtering marketplace invoices by issuer name. Styled to match the slate/cyan marketplace theme. A clear button appears when the input has a value.
+
+**File:** `components/InvoiceSearch.jsx`
+
+### Props
+
+| Prop          | Type       | Default                         | Description                                      |
+| ------------- | ---------- | ------------------------------- | ------------------------------------------------ |
+| `value`       | `string`   | —                               | Current search query (controlled by parent)      |
+| `onChange`    | `function` | —                               | Called with the new value on every keystroke     |
+| `placeholder` | `string`   | `"Search issuer… (press /)"`    | Placeholder text; override to hide shortcut hint |
+
+### Keyboard shortcut
+
+Press **`/`** anywhere on the page to move focus to the search input. The shortcut is ignored when focus is already inside an `input`, `textarea`, or `contenteditable` element so typing elsewhere is never intercepted.
+
+The default placeholder includes a visible `(press /)` hint for discoverability.
+
+### Accessibility
+
+- Labelled via a `sr-only` `<label>` linked to the input with `htmlFor` / `id`.
+- The global shortcut does not trap or hijack keystrokes in editable fields.
+- Modifier combinations (`Ctrl+/`, `Meta+/`, `Alt+/`) are ignored to avoid conflicting with browser shortcuts.
+
+### Example
+
+```jsx
+import InvoiceSearch from "@/components/InvoiceSearch";
+
+function MarketplaceFilters() {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  return (
+    <InvoiceSearch value={searchQuery} onChange={setSearchQuery} />
+  );
+}
 ```
 
 ---
