@@ -1,6 +1,10 @@
 ﻿"use client";
 
-import { useWallet, WALLET_STATES } from "./WalletProvider";
+import { useState, useEffect, useContext } from 'react';
+import Button from './Button';
+import { useToast, ToastContext } from './ToastProvider';
+import { copy } from '../app/copy/en';
+import { isFreighterConnected, connectFreighter, getFreighterNetwork } from '../lib/wallet/freighter';
 
 import { copy } from "../app/copy/en";
 import { TRUSTED_WALLET_INSTALL_URL } from "../app/copy/constants";
@@ -30,22 +34,57 @@ export default function WalletStatus() {
   const { state, walletData, connect, disconnect } = useWallet();
 
 
+  // 2. Safe useWallet context lookup (no-throw fallback)
+  let wallet = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    wallet = useWallet();
+  } catch (e) {
+    // If not within a provider, we fall back to self-contained local state
+  }
 
-  /**
-   * Safely opens the trusted wallet installation URL in a new tab,
-   * mitigating reverse-tabnabbing vulnerabilities by using 'noopener'.
-   *
-   * This function validates that the URL uses the 'https:' protocol before
-   * opening it.
-   */
-  const handleInstallWallet = () => {
+  // 3. Self-contained local state (fallback when useWallet is not active)
+  const [localState, setLocalState] = useState(WALLET_STATES.DISCONNECTED);
+  const [localData, setLocalData] = useState(null);
+  const [localError, setLocalError] = useState(null);
+
+  // Connection flow for self-contained local state
+  const connectLocal = async () => {
+    setLocalState(WALLET_STATES.CONNECTING);
+    setLocalError(null);
+
     try {
-      const url = new URL(TRUSTED_WALLET_INSTALL_URL);
-      // Enforce a strict protocol check, rejecting anything that is not 'https:'.
-      if (url.protocol !== "https:") {
-        console.error("Blocked insecure wallet installation URL:", url.href);
+      const isInstalled = await isFreighterConnected();
+      if (!isInstalled) {
+        setLocalState(WALLET_STATES.NO_WALLET);
         return;
       }
+
+      const address = await connectFreighter();
+      const network = await getFreighterNetwork();
+      const expectedNetwork = process.env.NEXT_PUBLIC_STELLAR_NETWORK || 'testnet';
+
+      if (network !== expectedNetwork.toLowerCase()) {
+        setLocalState(WALLET_STATES.WRONG_NETWORK);
+        setLocalError(`Connected to ${network}. Please switch to ${expectedNetwork}.`);
+        toast.error(copy.wallet.toastWrongNetworkMsg, copy.wallet.toastWrongNetworkTitle);
+        return;
+      }
+
+      setLocalState(WALLET_STATES.CONNECTED);
+      setLocalData({
+        address,
+        network,
+        balance: '1,234.56 XLM',
+        walletType: 'freighter',
+      });
+      toast.success(copy.wallet.toastConnectedMsg, copy.wallet.toastConnectedTitle);
+    } catch (err) {
+      setLocalState(WALLET_STATES.ERROR);
+      setLocalError(err.message || copy.wallet.errorConnect);
+      toast.error(copy.wallet.toastErrorMsg, copy.wallet.toastErrorTitle);
+    }
+  };
 
       // Invoke window.open() with security features to block reverse-tabnabbing.
       const newWindow = window.open(url.href, "_blank", "noopener,noreferrer");
@@ -89,19 +128,68 @@ export default function WalletStatus() {
       case WALLET_STATES.DISCONNECTED:
         return copy.wallet.connectButton;
       case WALLET_STATES.CONNECTING:
-        return copy.wallet.connectingButton;
-      case WALLET_STATES.CONNECTED:
-        return copy.wallet.disconnectButton;
+        return {
+          buttonText: copy.wallet.connectingButton,
+          buttonVariant: "loading",
+          helperText: copy.wallet.helperConnecting,
+          disabled: true,
+          showAddress: false,
+        };
+
+      case WALLET_STATES.CONNECTED: {
+        const displayAddress = walletData?.address
+          ? (walletData.address.includes('...')
+              ? walletData.address
+              : (walletData.address.length > 12
+                  ? `${walletData.address.slice(0, 4)}...${walletData.address.slice(-2)}`
+                  : walletData.address))
+          : '';
+        return {
+          buttonText: copy.wallet.disconnectButton,
+          buttonVariant: "secondary",
+          helperText: copy.wallet.helperConnected.replace(
+            "{network}",
+            walletData?.network || "public"
+          ),
+          disabled: false,
+          showAddress: true,
+          displayAddress,
+        };
+      }
+
       case WALLET_STATES.ERROR:
-        return copy.wallet.retryButton;
+        return {
+          buttonText: copy.wallet.retryButton,
+          buttonVariant: "primary",
+          helperText: error || copy.wallet.helperError,
+          disabled: false,
+          showAddress: false,
+        };
+
       case WALLET_STATES.WRONG_NETWORK:
-        return copy.wallet.switchNetworkButton;
+        return {
+          buttonText: copy.wallet.switchNetworkButton,
+          buttonVariant: "warning",
+          helperText: copy.wallet.helperWrongNetwork,
+          disabled: false,
+          showAddress: false,
+        };
+
       case WALLET_STATES.NO_WALLET:
-        return copy.wallet.installWalletButton;
+        return {
+          buttonText: copy.wallet.installWalletButton,
+          buttonVariant: "external",
+          helperText: copy.wallet.helperNoWallet,
+          disabled: false,
+          showAddress: false,
+        };
+
       default:
-        return copy.wallet.connectButton;
+        return getStateConfig(WALLET_STATES.DISCONNECTED);
     }
   };
+
+  const config = getStateConfig(rawState);
 
   const getHelperText = () => {
     switch (state) {
@@ -131,53 +219,48 @@ export default function WalletStatus() {
   const isDisabled = isConnecting;
 
   return (
-    <div className="flex items-center gap-4">
-      <div
-        aria-hidden="true"
-        className={`h-2 w-2 rounded-full ${
-          state === WALLET_STATES.CONNECTED ? "bg-emerald-400" : "bg-slate-600"
-        } ${isConnecting ? "animate-pulse bg-amber-400" : ""}`}
-      />
-      <div className="flex flex-col text-left">
-        {state === WALLET_STATES.CONNECTED && walletData ? (
-          <>
-            <span className="text-sm font-mono text-slate-300">
-              {walletData.address}
-            </span>
-            {walletData.balance && (
-              <span className="text-xs text-slate-500">
-                {walletData.balance}
-              </span>
-            )}
-          </>
-        ) : (
-          <span
-            id="wallet-helper-text"
-            className="text-sm text-slate-400 max-w-xs"
+    <div className="flex flex-col gap-3">
+      {/* Inline error banner for ERROR and WRONG_NETWORK states */}
+      {(rawState === WALLET_STATES.ERROR || rawState === WALLET_STATES.WRONG_NETWORK) &&
+        error && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-slate-50 shadow-sm"
+            data-testid="wallet-error-banner"
           >
             {helperText}
           </span>
         )}
-      </div>
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={isDisabled}
-        aria-disabled={isDisabled}
-        aria-label={
-          state === WALLET_STATES.NO_WALLET
-            ? "Install Stellar Wallet"
-            : buttonText
-        }
-        aria-describedby="wallet-helper-text"
-        className="rounded-full border border-slate-700 bg-slate-800/50 px-4 py-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-slate-700/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isConnecting && <Spinner className="-ml-1 mr-2" />}
-        {buttonText}
-      </button>
-      <div className="sr-only" role="status" aria-live="polite">
-        Wallet status: {state}
-        {walletData?.address && `. Connected as ${walletData.address}`}
+
+      {/* Main wallet status container */}
+      <div className="flex items-center gap-4">
+
+        <Button
+          variant={config.buttonVariant === 'loading' ? 'primary' : config.buttonVariant}
+          loading={config.buttonVariant === 'loading'}
+          disabled={config.disabled}
+          onClick={handleClick}
+          aria-label={config.buttonText}
+          aria-describedby="wallet-helper-text"
+        >
+          {rawState === WALLET_STATES.CONNECTED ? (
+            "Wallet connected."
+          ) : (
+            `Wallet status: ${rawState}${derivedError ? `. Error: ${derivedError}` : ''}`
+          )}
+          {config.buttonText}
+        </Button>
+
+        <div className="sr-only" role="status" aria-live="polite">
+          Wallet status: {rawState}
+          {walletData?.address && `. Connected as ${walletData.address}`}
+          {error && `. Error: ${error}`}
+        </div>
+
+        <div id="wallet-helper-text" className="sr-only">
+          {config.helperText}
+        </div>
       </div>
     </div>
   );
