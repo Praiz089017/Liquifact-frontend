@@ -350,6 +350,19 @@ npm install --package-lock-only --ignore-scripts
 git diff --exit-code package-lock.json  # exits 1 if drifted
 ```
 
+### Security in CI
+
+As the application handles financial flows and wallet integration, our CI pipeline includes parallel security gates:
+
+1. **Dependency Audit** (`npm audit --audit-level=high`):
+   - Fails the build if high or critical vulnerabilities are found in the dependency tree.
+   - **Triage & Waive**: If a vulnerability is flagged, try running `npm audit fix` locally to resolve it. If it is a false positive or unfixable, you can document the rationale and waive it by updating package versions or using standard `npm audit` override mechanisms (e.g., `overrides` in `package.json`).
+
+2. **Secret Scanning** (`gitleaks`):
+   - Scans the repository and pull request diffs for leaked secrets, API keys, and sensitive tokens.
+   - If a scan fails due to a false positive, verify the flagged string is safe and (if necessary) add a `.gitleaksignore` file or a `#gitleaks:allow` inline comment to waive it.
+
+
 ---
 
 ## Dependency updates
