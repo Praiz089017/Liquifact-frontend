@@ -9,77 +9,119 @@ import { sanitize } from "@/utils/sanitizeUrl";
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import Button from "@/components/Button";
+import { useSearchParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
-import InvoiceCard from "@/components/InvoiceCard";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
-import Pagination from "@/components/Pagination";
-import InvoiceFilters, {
-  DEFAULT_FILTERS,
-  parseSortState,
-  hasActiveFilters,
-} from "@/components/InvoiceFilters";
+import Pagination, { normalizePaginationParams } from "@/components/Pagination";
+import InvoiceFilters, { DEFAULT_FILTERS, hasActiveFilters, parseSortState } from "@/components/InvoiceFilters";
 import { copy } from "../copy/en";
 import { fetchInvestableInvoices } from "../../lib/api/invoices";
 import InvoiceSearch from "@/components/InvoiceSearch";
 
 export const PAGE_SIZE = 10;
+export const SEARCH_DEBOUNCE_MS = 300;
+
+export function getInvoiceLoadAnnouncement(
+  invoices,
+  { filterActive = false, filteredCount = 0 } = {}
+) {
+  if (!Array.isArray(invoices) || invoices.length === 0) {
+    return "No invoices available";
+  }
+
+  if (filterActive) {
+    if (filteredCount === 0) {
+      return "No invoices match";
+    }
+    return `${filteredCount} of ${invoices.length} invoices match`;
+  }
+
+  return `${invoices.length} investable invoices loaded`;
+}
+
+export function getPaginationAnnouncement(shown, total) {
+  if (total === 0) return "No invoices available";
+  return `Showing ${shown} of ${total} investable invoices`;
+}
 
 /**
- * Mock invoice data – replace with real API call once the backend endpoint
- * is available (follow-up: link backend issue here).
- *
- * Contract per item: { id, issuer, amount, currency, dueDate, yield, status }
- * NOTE: yield values are illustrative; contracts use on-chain basis points and actual settlement is at maturity.
+ * Parse a numeric amount string like "12,500" → 12500.
+ * @param {string} str
+ * @returns {number}
  */
-const MOCK_INVOICES = [
-  {
-    id: "inv-001",
-    issuer: "Acme Supplies Ltd",
-    amount: "12,500",
-    currency: "USD",
-    dueDate: "2026-06-15",
-    yield: "8.2%",
-    status: "Open",
-  },
-  {
-    id: "inv-002",
-    issuer: "Bright Logistics GmbH",
-    amount: "7,800",
-    currency: "EUR",
-    dueDate: "2026-07-01",
-    yield: "7.5%",
-    status: "Open",
-  },
-  {
-    id: "inv-003",
-    issuer: "Sunrise Exports Pte",
-    amount: "22,000",
-    currency: "USD",
-    dueDate: "2026-05-30",
-    yield: "9.1%",
-    status: "Open",
-  },
-];
+function parseAmount(str) {
+  return parseFloat(String(str).replace(/,/g, "")) || 0;
+}
 
-// DEV-only delay (ms) to make the skeleton visible during local development.
-const DEV_DELAY = process.env.NODE_ENV === "development" ? 800 : 0;
+/**
+ * Parse a yield string like "8.2%" → 8.2.
+ * @param {string} str
+ * @returns {number}
+ */
+function parseYield(str) {
+  return parseFloat(String(str).replace(/%/g, "")) || 0;
+}
 
-export default function InvestPage() {
-  const router = useRouter();
+/**
+ * Sort a copy of `list` according to the sort column + direction in `filters`.
+ *
+ * Supported columns: "amount", "yield", "maturity".
+ * Direction: "asc" | "desc".
+ *
+ * @param {Array}  list
+ * @param {object} filters
+ * @returns {Array}
+ */
+export function applySortToList(list, filters) {
+  if (!Array.isArray(list) || list.length === 0) return list;
+
+  const { column, dir } = parseSortState(filters);
+  if (!column) return list;
+
+  const multiplier = dir === "asc" ? 1 : -1;
+
+  return [...list].sort((a, b) => {
+    let diff = 0;
+    if (column === "amount") {
+      diff = parseAmount(a.amount) - parseAmount(b.amount);
+    } else if (column === "yield") {
+      diff = parseYield(a.yield) - parseYield(b.yield);
+    } else if (column === "maturity") {
+      diff = new Date(a.dueDate) - new Date(b.dueDate);
+    }
+    return multiplier * diff;
+  });
+}
+
+/**
+ * InvestMarketplace – main component for the invest page.
+ *
+ * Fetches invoices via `loadInvoices`, renders them PAGE_SIZE at a time,
+ * and exposes a "Load more" control to append the next batch.  Paging
+ * resets whenever a new invoice set arrives so filter changes stay
+ * non-breaking.
+ *
+ * @param {object}   props
+ * @param {Function} [props.loadInvoices] - Async function that resolves to an
+ *   invoice array.  Defaults to the mock loader; injectable for testing.
+ * @returns {JSX.Element}
+ */
+export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   const searchParams = useSearchParams();
+  const searchParamsValue = searchParams ?? new URLSearchParams();
 
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [statusMessage, setStatusMessage] = useState("");
-  const [paginationAnnouncement, setPaginationAnnouncement] = useState("");
   const [loadError, setLoadError] = useState("");
 
-  const [searchTerm, setSearchTerm] = useState(initialSearch);
-  const [sortOption, setSortOption] = useState(initialSort);
-  const [activeFilters, setActiveFilters] = useState<string[]>(initialFilters);
-  const [invoices, setInvoices] = useState(null);
+  const initialSearch = searchParamsValue.get("search") || "";
+  const initialFilters = { ...DEFAULT_FILTERS };
+  for (const key of Object.keys(DEFAULT_FILTERS)) {
+    if (searchParamsValue.has(key)) {
+      initialFilters[key] = searchParamsValue.get(key) || "";
+    }
+  }
 
   // Sync state changes back to the URL using replace (no history entry)
   const syncToUrl = () => {
@@ -95,37 +137,43 @@ export default function InvestPage() {
   useEffect(() => {
     let active = true;
 
-  // Load mock invoices after optional dev delay
+    const announceLoadCompletion = async () => {
+      try {
+        const nextInvoices = await loadInvoices({ signal: controller.signal });
+
+        if (!isActive) return;
+
+        const normalizedInvoices = Array.isArray(nextInvoices) ? nextInvoices : [];
+
+        setInvoices(normalizedInvoices);
+        setVisibleCount(PAGE_SIZE);
+        setStatusMessage(getInvoiceLoadAnnouncement(normalizedInvoices));
+      } catch {
+        if (!isActive) return;
+
+        setInvoices(null);
+        setLoadError(copy.invest.errorDescription);
+        setStatusMessage(copy.invest.errorStatus);
+      }
+    };
+
+    void announceLoadCompletion();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [loadInvoices]);
+
+  // ──────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => setInvoices(MOCK_INVOICES), DEV_DELAY);
     return () => clearTimeout(timer);
   }, []);
 
-  // Hydrate state from URL when navigation occurs (back/forward)
-  useEffect(() => {
-    const q = sanitize(searchParams.get("q")) ?? "";
-    const s = sanitize(searchParams.get("sort")) ?? "";
-    const f = sanitize(searchParams.get("filters"))?.split(",").filter(Boolean) ?? [];
-    setSearchTerm(q);
-    setSortOption(s);
-    setActiveFilters(f);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  const handleLoadMore = useCallback(() => {
-    setVisibleCount((prev) => {
-      const next = Math.min(prev + PAGE_SIZE, filteredInvoices.length || prev);
-      const total = filteredInvoices.length;
-      setPaginationAnnouncement(getPaginationAnnouncement(next, total));
-      return next;
-    });
-
-    setTimeout(() => {
-      loadMoreRef.current?.focus();
-    }, 0);
-  }, [filteredInvoices.length]);
-
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const handleFilterChange = useCallback((nextFilters) => {
+    setFilters(nextFilters);
+  }, []);
 
   const allInvoices = Array.isArray(invoices) ? invoices : [];
 
@@ -169,6 +217,69 @@ export default function InvestPage() {
     return list;
   })();
 
+  const normalizedPagination = normalizePaginationParams({
+    page: searchParamsValue.get("page"),
+    pageSize: searchParamsValue.get("pageSize"),
+    totalItems: filteredInvoices.length,
+    defaultPageSize: PAGE_SIZE,
+  });
+
+  useEffect(() => {
+    const nextVisibleCount = Math.min(
+      normalizedPagination.page * normalizedPagination.pageSize,
+      filteredInvoices.length,
+    );
+    setVisibleCount(nextVisibleCount > 0 ? nextVisibleCount : 0);
+  }, [filteredInvoices.length, normalizedPagination.page, normalizedPagination.pageSize]);
+
+  useEffect(() => {
+    if (invoices === null || loadError) return;
+
+    const hasUserAppliedFilters = Boolean(debouncedQuery.trim()) || hasActiveFilters(filters);
+
+    if (allInvoices.length === 0) {
+      setStatusMessage("No invoices available");
+      return;
+    }
+
+    if (!hasUserAppliedFilters) {
+      setStatusMessage(getInvoiceLoadAnnouncement(allInvoices));
+      return;
+    }
+
+    if (debouncedQuery.trim()) {
+      setStatusMessage(
+        getInvoiceLoadAnnouncement(allInvoices, {
+          filterActive: true,
+          filteredCount: filteredInvoices.length,
+        })
+      );
+      return;
+    }
+
+    setStatusMessage(getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length));
+  }, [allInvoices, debouncedQuery, filters, filteredInvoices.length, invoices, loadError, visibleCount]);
+
+  // ── Load-more handler ──────────────────────────────────────────────────────
+  /**
+   * Appends the next PAGE_SIZE items and updates the live-region status.
+   * Focus is moved back to the "Load more" button (if it still exists) so
+   * keyboard users do not lose their place in the page.
+   */
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((prev) => {
+      const next = Math.min(prev + normalizedPagination.pageSize, filteredInvoices.length || prev);
+      const total = filteredInvoices.length;
+      setStatusMessage(getPaginationAnnouncement(next, total));
+      return next;
+    });
+
+    // Restore focus on next tick so the button is still in the DOM when we focus it.
+    setTimeout(() => {
+      loadMoreRef.current?.focus();
+    }, 0);
+  }, [filteredInvoices, normalizedPagination.pageSize]);
+
   const visibleInvoices = filteredInvoices.slice(0, visibleCount);
 
   return (
@@ -186,14 +297,16 @@ export default function InvestPage() {
         </p>
       </div>
 
-        <InvoiceSearch
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          sortOption={sortOption}
-          onSortChange={setSortOption}
-          filters={activeFilters}
-          onFiltersChange={setActiveFilters}
-        />
+        <div className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6">
+          <div className="flex flex-wrap gap-4 items-center">
+            <InvoiceSearch value={searchQuery} onChange={handleSearchChange} />
+            <InvoiceFilters
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              onClearFilters={() => setFilters(DEFAULT_FILTERS)}
+            />
+          </div>
+        </div>
 
         {invoices === null ? (
           <InvoiceListSkeleton rows={3} />

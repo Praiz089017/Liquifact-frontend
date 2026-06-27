@@ -76,100 +76,15 @@ Pure function that returns a sorted copy of invoice list. Does **not** mutate th
 - **Future API Contract**: Reset to base `GET /api/invoices`
 - **UI State**: Active (disabled when no filters are active)
 
-## 2. Filter Predicates (exported)
-
-Pure, testable export functions from `components/InvoiceFilters.jsx`. These
-encode the exact filtering contract used by `lib/hooks/useInvoiceFilters.js`
-and `app/invest/page.js` for valid inputs, but additionally enforce a
-**strict NaN-defence contract** that protects against malformed invoice data.
-
-### 2.1 Predicate inventory
-
-| Export                                                           | Signature                                                      | Used by            |
-| ---------------------------------------------------------------- | -------------------------------------------------------------- | ------------------ |
-| `matchesYieldRange(invoiceYield, yieldMin, yieldMax)`            | `(string\|number\|null\|undefined, string, string) => boolean` | Yield predicate    |
-| `matchesCurrency(invoiceCurrency, currency)`                     | `(string\|null\|undefined, string) => boolean`                 | Currency predicate |
-| `matchesMaturityRange(invoiceDueDate, maturityFrom, maturityTo)` | `(string, string, string) => boolean`                          | Maturity predicate |
-| `matchesFilters(invoice, filters)`                               | `(Invoice, Filters) => boolean`                                | Combined AND       |
-
-All four are imported from `components/InvoiceFilters.jsx`; the unit tests
-live in `components/InvoiceFilters.predicates.test.tsx`.
-
-### 2.2 Yield range — inclusive both ends
-
-| Filter            | Invoice yield | Result                       |
-| ----------------- | ------------- | ---------------------------- |
-| `yieldMin = 8.0`  | `8.0%`        | ✅ pass (inclusive lower)    |
-| `yieldMin = 8.0`  | `7.9%`        | ❌ fail                      |
-| `yieldMax = 8.0`  | `8.0%`        | ✅ pass (inclusive upper)    |
-| `yieldMax = 8.0`  | `8.1%`        | ❌ fail                      |
-| Both bounds empty | any value     | ✅ pass (parseable yields)   |
-| Both bounds empty | unparseable   | ❌ fail (strict NaN defence) |
-
-The invoice yield accepts either the `"8.2%"` percentage string format
-(used by `lib/api/invoices.js`) or a bare number `8.2`. Non-numeric /
-`NaN` invoice yields are excluded even when both bounds are empty — see
-[§ 2.5](#25-strict-nan-defence-contract).
-
-### 2.3 Currency — strict equality
-
-- Empty / `undefined` / `null` currency filter passes every invoice.
-- Otherwise the invoice `currency` must equal the filter value **exactly**,
-  case-sensitive (i.e. `"USD"` is not equal to `"usd"`).
-- Missing / `null` / empty invoice `currency` always fails when the filter
-  is set.
-
-### 2.4 Maturity — ISO lexicographic, inclusive
-
-Comparison is done on ISO date strings (`YYYY-MM-DD`) which sort
-lexicographically in chronological order. This matches
-`app/invest/page.js`'s implementation exactly.
-
-| Filter                      | Invoice dueDate | Result              |
-| --------------------------- | --------------- | ------------------- |
-| `maturityFrom = 2026-09-01` | `2026-09-01`    | ✅ pass (inclusive) |
-| `maturityFrom = 2026-09-01` | `2026-08-31`    | ❌ fail             |
-| `maturityTo  = 2026-09-01`  | `2026-09-01`    | ✅ pass (inclusive) |
-| `maturityTo  = 2026-09-01`  | `2026-09-02`    | ❌ fail             |
-
-### 2.5 Strict NaN-defence contract
-
-Every predicate parses its input up front and returns `false` on any
-unparseable / `NaN` value. This is **stricter** than the current
-production behaviour:
-
-- `lib/hooks/useInvoiceFilters.js` short-circuits the entire yield block
-  when both bounds are empty (`if (filters.yieldMin || filters.yieldMax)`),
-  so a malformed invoice yield would slip through.
-- The hook also coerces **empty** yield strings to the number `0` (its
-  inline `parseYield` returns `0` when input is falsy) rather than `NaN`,
-  so an invoice with `yield === ""` is treated as `0%` — not as missing.
-  The predicate treats the same input as unparseable and excludes it.
-- The hook also uses `new Date(invoice.dueDate)` for maturity comparison;
-  an invalid ISO string yields `Invalid Date`, and comparisons between
-  `Invalid Date` and a real date silently coerce to `false`, so a
-  malformed date would pass.
-
-The predicates' strict contract is the **forward-looking intent**; closing
-the divergence is the subject of a follow-up hook refactor (see
-_Future Work_ below). Until then:
-
-- Test the predicates against the strict contract.
-- Test the production filter pipeline (`useInvoiceFilters.test.tsx`,
-  `app/invest/page.test.jsx`) against the looser contract.
-- Document any production invoice that surfaces a `NaN` value as a data
-  issue upstream of the marketplace.
-
-### 2.6 Combined intersection
-
-`matchesFilters(invoice, filters)` short-circuits with logical `AND`:
-
-1. `matchesCurrency(...)` must pass.
-2. `matchesYieldRange(...)` must pass.
-3. `matchesMaturityRange(...)` must pass.
-
-Empty / `DEFAULT_FILTERS` passes every invoice (subject to the strict
-NaN-defence contract above).
+### 6. Marketplace Pagination Query Params
+- **Purpose**: Sanitize `page` and `pageSize` values supplied through the marketplace URL so pagination stays within safe bounds.
+- **Query params**: `page`, `pageSize`
+- **Validation rules**:
+  - Coerce both params to integers.
+  - Clamp `page` to the range `[1, totalPages]`.
+  - Clamp `pageSize` to the range `[1, totalItems]`.
+  - Fall back to defaults when values are missing or malformed.
+- **UI behavior**: The marketplace uses the sanitized values to cap the number of visible invoices and never renders more items than the filtered dataset contains.
 
 ## Accessibility Features
 
