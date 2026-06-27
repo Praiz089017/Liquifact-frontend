@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Button from './Button';
-import { useToast } from './ToastProvider';
-import { copy } from '../app/copy/en';
+import { useState, useEffect, useContext } from "react";
+import Button from "./Button";
+import { useToast, ToastContext } from "./ToastProvider";
+import { copy } from "../app/copy/en";
+import { useWallet } from "./WalletProvider";
 
 // Wallet connection states defined locally to prevent mock pollution / circular dependencies
 const WALLET_STATES = {
@@ -58,29 +59,29 @@ export default function WalletStatus() {
       const scenarios = ["success", "error", "wrong_network", "no_wallet"];
       const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
       const mockWalletData = {
-        address: 'GABC...XYZ123',
-        network: 'public',
-        balance: '1,234.56 XLM',
+        address: "GABC...XYZ123",
+        network: "public",
+        balance: "1,234.56 XLM",
       };
 
       switch (scenario) {
         case "success":
-          setWalletState(WALLET_STATES.CONNECTED);
-          setWalletData(mockWalletData);
+          setLocalState(WALLET_STATES.CONNECTED);
+          setLocalData(mockWalletData);
           toast.success(copy.wallet.toastConnectedMsg, copy.wallet.toastConnectedTitle);
           break;
         case "error":
-          setWalletState(WALLET_STATES.ERROR);
-          setError(copy.wallet.errorConnect);
+          setLocalState(WALLET_STATES.ERROR);
+          setLocalError(copy.wallet.errorConnect);
           toast.error(copy.wallet.toastErrorMsg, copy.wallet.toastErrorTitle);
           break;
         case "wrong_network":
-          setWalletState(WALLET_STATES.WRONG_NETWORK);
-          setError(copy.wallet.errorWrongNetwork);
+          setLocalState(WALLET_STATES.WRONG_NETWORK);
+          setLocalError(copy.wallet.errorWrongNetwork);
           toast.error(copy.wallet.toastWrongNetworkMsg, copy.wallet.toastWrongNetworkTitle);
           break;
         case "no_wallet":
-          setWalletState(WALLET_STATES.NO_WALLET);
+          setLocalState(WALLET_STATES.NO_WALLET);
           break;
       }
     }, 1500);
@@ -94,20 +95,21 @@ export default function WalletStatus() {
 
   // 4. Unify API properties to support both context-based and local fallback modes
   const isUsingContext = !!wallet;
-  const rawState = isUsingContext ? (wallet.state || wallet.walletState) : localState;
+  const rawState = isUsingContext ? wallet.state || wallet.walletState : localState;
   const walletData = isUsingContext ? wallet.walletData : localData;
   const error = isUsingContext ? wallet.error : localError;
 
-  const derivedError = rawState === WALLET_STATES.ERROR
-    ? (error || copy.wallet.errorConnect)
-    : rawState === WALLET_STATES.WRONG_NETWORK
-      ? (error || copy.wallet.errorWrongNetwork)
-      : null;
+  const derivedError =
+    rawState === WALLET_STATES.ERROR
+      ? error || copy.wallet.errorConnect
+      : rawState === WALLET_STATES.WRONG_NETWORK
+        ? error || copy.wallet.errorWrongNetwork
+        : null;
 
   const handleConnect = () => {
     if (isUsingContext) {
       const connectFn = wallet.connect || wallet.connectWallet;
-      if (typeof connectFn === 'function') {
+      if (typeof connectFn === "function") {
         connectFn();
       }
     } else {
@@ -118,7 +120,7 @@ export default function WalletStatus() {
   const handleDisconnect = () => {
     if (isUsingContext) {
       const disconnectFn = wallet.disconnect || wallet.disconnectWallet;
-      if (typeof disconnectFn === 'function') {
+      if (typeof disconnectFn === "function") {
         disconnectFn();
       }
     } else {
@@ -140,7 +142,7 @@ export default function WalletStatus() {
         break;
 
       case WALLET_STATES.NO_WALLET:
-        window.open('https://www.stellar.org/wallets', '_blank');
+        window.open("https://www.stellar.org/wallets", "_blank");
         break;
 
       default:
@@ -183,12 +185,12 @@ export default function WalletStatus() {
 
       case WALLET_STATES.CONNECTED: {
         const displayAddress = walletData?.address
-          ? (walletData.address.includes('...')
-              ? walletData.address
-              : (walletData.address.length > 12
-                  ? `${walletData.address.slice(0, 4)}...${walletData.address.slice(-2)}`
-                  : walletData.address))
-          : '';
+          ? walletData.address.includes("...")
+            ? walletData.address
+            : walletData.address.length > 12
+              ? `${walletData.address.slice(0, 4)}...${walletData.address.slice(-2)}`
+              : walletData.address
+          : "";
         return {
           buttonText: copy.wallet.disconnectButton,
           buttonVariant: "secondary",
@@ -234,34 +236,13 @@ export default function WalletStatus() {
     }
   };
 
-  const config = getStateConfig(walletState);
-
-  const handleClick = () => {
-    switch (walletState) {
-      case WALLET_STATES.DISCONNECTED:
-      case WALLET_STATES.ERROR:
-      case WALLET_STATES.WRONG_NETWORK:
-        connectWallet();
-        break;
-
-      case WALLET_STATES.CONNECTED:
-        disconnectWallet();
-        break;
-
-      case WALLET_STATES.NO_WALLET:
-        window.open("https://www.stellar.org/wallets", "_blank");
-        break;
-
-      default:
-        break;
-    }
-  };
+  const config = getStateConfig(rawState);
 
   return (
     <div className="flex flex-col gap-3">
       {/* Inline error banner for ERROR and WRONG_NETWORK states */}
-      {(walletState === WALLET_STATES.ERROR || walletState === WALLET_STATES.WRONG_NETWORK) &&
-        error && (
+      {(rawState === WALLET_STATES.ERROR || rawState === WALLET_STATES.WRONG_NETWORK) &&
+        derivedError && (
           <div
             role="alert"
             aria-live="assertive"
@@ -275,7 +256,7 @@ export default function WalletStatus() {
                 </span>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm leading-5 text-slate-200">{error}</p>
+                <p className="text-sm leading-5 text-slate-200">{derivedError}</p>
               </div>
             </div>
           </div>
@@ -283,25 +264,22 @@ export default function WalletStatus() {
 
       {/* Main wallet status container */}
       <div className="flex items-center gap-4">
-
         <Button
-          variant={config.variant}
-          loading={config.loading}
+          variant={config.buttonVariant}
+          loading={rawState === WALLET_STATES.CONNECTING}
           disabled={config.disabled}
           onClick={handleClick}
           aria-label={config.buttonText}
           aria-describedby="wallet-helper-text"
         >
-          {rawState === WALLET_STATES.CONNECTED ? (
-            "Wallet connected."
-          ) : (
-            `Wallet status: ${rawState}${derivedError ? `. Error: ${derivedError}` : ''}`
-          )}
+          {rawState === WALLET_STATES.CONNECTED
+            ? "Wallet connected."
+            : `Wallet status: ${rawState}${derivedError ? `. Error: ${derivedError}` : ""}`}
           {config.buttonText}
         </Button>
 
         <div className="sr-only" role="status" aria-live="polite">
-          Wallet status: {walletState}
+          Wallet status: {rawState}
           {walletData?.address && `. Connected as ${walletData.address}`}
           {error && `. Error: ${error}`}
         </div>
@@ -309,6 +287,7 @@ export default function WalletStatus() {
         <div id="wallet-helper-text" className="sr-only">
           {config.helperText}
         </div>
+      </div>
     </div>
   );
 }

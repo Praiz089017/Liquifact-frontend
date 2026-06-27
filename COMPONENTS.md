@@ -27,9 +27,9 @@ A reusable empty-state panel with an icon slot, heading, description, and an act
 
 ### Named exports
 
-| Export                     | Description                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------------ |
-| `default` (`EmptyState`)   | The reusable empty-state container component                                         |
+| Export                     | Description                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| `default` (`EmptyState`)   | The reusable empty-state container component                                        |
 | `InvoiceEmptyIllustration` | Decorative inline SVG of an empty document tray; always rendered with `aria-hidden` |
 
 ### Props (`EmptyState`)
@@ -51,7 +51,7 @@ A reusable empty-state panel with an icon slot, heading, description, and an act
 ### Example
 
 ```jsx
-import EmptyState, { InvoiceEmptyIllustration } from '@/components/EmptyState';
+import EmptyState, { InvoiceEmptyIllustration } from "@/components/EmptyState";
 
 <EmptyState
   icon={<InvoiceEmptyIllustration />}
@@ -65,7 +65,7 @@ import EmptyState, { InvoiceEmptyIllustration } from '@/components/EmptyState';
       Upload your first invoice
     </a>
   }
-/>
+/>;
 ```
 
 ---
@@ -116,9 +116,9 @@ Site footer with navigation links (Docs, System Status, Contact Support). Links 
 
 ### Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `links` | `Array<{label:string, href:string, external?:boolean}>` | `undefined` (uses default links) | Optional custom links array. Allows passing internal links (with `external: false`) to render via Next `Link`.
+| Prop    | Type                                                    | Default                          | Description                                                                                                    |
+| ------- | ------------------------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `links` | `Array<{label:string, href:string, external?:boolean}>` | `undefined` (uses default links) | Optional custom links array. Allows passing internal links (with `external: false`) to render via Next `Link`. |
 
 > **Note:** When `external` is omitted or set to `true`, the link is rendered as a normal `<a>` with `target="_blank"` and `rel="noopener noreferrer"` for security.
 
@@ -143,23 +143,23 @@ Renders the SME invoice list with loading, empty, and error states. Each card th
 
 ### Props
 
-| Prop                 | Type       | Default          | Description                                                                 |
-| -------------------- | ---------- | ---------------- | --------------------------------------------------------------------------- |
-| `loadInvoices`       | `function` | `loadMockInvoices` | Async loader that resolves to an invoice array                            |
-| `optimisticInvoices` | `array`    | `[]`             | Newly submitted invoices to prepend optimistically before the API responds |
+| Prop                 | Type       | Default            | Description                                                                |
+| -------------------- | ---------- | ------------------ | -------------------------------------------------------------------------- |
+| `loadInvoices`       | `function` | `loadMockInvoices` | Async loader that resolves to an invoice array                             |
+| `optimisticInvoices` | `array`    | `[]`               | Newly submitted invoices to prepend optimistically before the API responds |
 
 ### Invoice object shape
 
-| Field           | Type     | Required | Description                                                     |
-| --------------- | -------- | -------- | --------------------------------------------------------------- |
-| `id`            | `string` | Yes      | Unique identifier                                               |
-| `issuer`        | `string` | Yes      | Display name (company name)                                     |
+| Field           | Type     | Required | Description                                                        |
+| --------------- | -------- | -------- | ------------------------------------------------------------------ |
+| `id`            | `string` | Yes      | Unique identifier                                                  |
+| `issuer`        | `string` | Yes      | Display name (company name)                                        |
 | `issuerAddress` | `string` | No       | Stellar public key; when present, shown truncated with copy button |
-| `amount`        | `string` | Yes      | Formatted amount string                                         |
-| `currency`      | `string` | Yes      | ISO currency code                                               |
-| `dueDate`       | `string` | Yes      | ISO-8601 due date                                               |
-| `yield`         | `string` | Yes      | Estimated yield percentage                                      |
-| `status`        | `string` | Yes      | One of: `Pending tokenization`, `Tokenized`, `Funded`, `Settled` |
+| `amount`        | `string` | Yes      | Formatted amount string                                            |
+| `currency`      | `string` | Yes      | ISO currency code                                                  |
+| `dueDate`       | `string` | Yes      | ISO-8601 due date                                                  |
+| `yield`         | `string` | Yes      | Estimated yield percentage                                         |
+| `status`        | `string` | Yes      | One of: `Pending tokenization`, `Tokenized`, `Funded`, `Settled`   |
 
 ### Copy-issuer-address button
 
@@ -440,19 +440,19 @@ A button that cycles through **light → dark → system** theme preferences, pe
 
 ### Named exports
 
-| Export              | Description                                                                             |
-| ------------------- | --------------------------------------------------------------------------------------- |
-| `default` (`ThemeToggle`) | The toggle button component                                                       |
-| `THEMES`            | `['light', 'dark', 'system']` — the ordered cycle                                      |
-| `THEME_STORAGE_KEY` | `localStorage` key used to persist the preference                                       |
-| `resolveTheme(pref)`| Maps a preference string to `'light'` or `'dark'` (resolves `'system'` via `matchMedia`) |
-| `readStoredTheme()` | Reads from `localStorage`, returning `'system'` as fallback                             |
-| `applyTheme(pref)`  | Sets `data-theme` on `document.documentElement`                                         |
+| Export                    | Description                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `default` (`ThemeToggle`) | The toggle button component                                                              |
+| `THEMES`                  | `['light', 'dark', 'system']` — the ordered cycle                                        |
+| `THEME_STORAGE_KEY`       | `localStorage` key used to persist the preference                                        |
+| `resolveTheme(pref)`      | Maps a preference string to `'light'` or `'dark'` (resolves `'system'` via `matchMedia`) |
+| `readStoredTheme()`       | Reads from `localStorage`, returning `'system'` as fallback                              |
+| `applyTheme(pref)`        | Sets `data-theme` on `document.documentElement`                                          |
 
 ### Props
 
-| Prop        | Type     | Default | Description                              |
-| ----------- | -------- | ------- | ---------------------------------------- |
+| Prop        | Type     | Default | Description                                    |
+| ----------- | -------- | ------- | ---------------------------------------------- |
 | `className` | `string` | `''`    | Extra classes forwarded to the root `<button>` |
 
 ### How it works
@@ -478,14 +478,14 @@ system (monitor icon)  →  light (sun icon)  →  dark (moon icon)  →  system
 
 ### CSS tokens consumed
 
-| Token            | Dark (`[data-theme="dark"]`) | Light (`[data-theme="light"]`) |
-| ---------------- | ---------------------------- | ------------------------------ |
-| `--color-bg`     | `#020617` (slate-950)        | `#f8fafc` (slate-50)           |
-| `--color-fg`     | `#f1f5f9` (slate-100)        | `#0f172a` (slate-900)          |
-| `--color-muted`  | `#94a3b8` (slate-400)        | `#64748b` (slate-500)          |
-| `--color-surface`| `#0f172a` (slate-900)        | `#ffffff` (white)              |
-| `--color-border` | `#1e293b` (slate-800)        | `#e2e8f0` (slate-200)          |
-| `--color-primary`| `#22d3ee` (cyan-400)         | `#0891b2` (cyan-600)           |
+| Token             | Dark (`[data-theme="dark"]`) | Light (`[data-theme="light"]`) |
+| ----------------- | ---------------------------- | ------------------------------ |
+| `--color-bg`      | `#020617` (slate-950)        | `#f8fafc` (slate-50)           |
+| `--color-fg`      | `#f1f5f9` (slate-100)        | `#0f172a` (slate-900)          |
+| `--color-muted`   | `#94a3b8` (slate-400)        | `#64748b` (slate-500)          |
+| `--color-surface` | `#0f172a` (slate-900)        | `#ffffff` (white)              |
+| `--color-border`  | `#1e293b` (slate-800)        | `#e2e8f0` (slate-200)          |
+| `--color-primary` | `#22d3ee` (cyan-400)         | `#0891b2` (cyan-600)           |
 
 ### Example
 

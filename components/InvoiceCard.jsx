@@ -41,7 +41,10 @@ function formatDate(dateStr) {
  */
 function formatAmount(amount, currency) {
   if (amount == null) return "—";
-  const formatted = Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatted = Number(amount).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
   return currency ? `${formatted} ${currency}` : formatted;
 }
 
@@ -64,7 +67,6 @@ export default function InvoiceCard({ invoice }) {
     >
       {/* Row layout: mirrors InvoiceListSkeleton column widths */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-
         {/* Issuer — w-1/4 min */}
         <div className="min-w-0 flex-1 basis-1/4">
           <p className="truncate font-semibold text-slate-100 group-hover:text-cyan-300 transition-colors">
@@ -81,9 +83,7 @@ export default function InvoiceCard({ invoice }) {
 
         {/* Yield — w-1/6 */}
         <div className="basis-1/6 text-right">
-          <p className="font-mono text-cyan-400">
-            {yieldPct != null ? `${yieldPct}%` : "—"}
-          </p>
+          <p className="font-mono text-cyan-400">{yieldPct != null ? `${yieldPct}%` : "—"}</p>
           <p className="text-xs text-slate-500 mt-0.5">Yield</p>
         </div>
 
@@ -103,7 +103,6 @@ export default function InvoiceCard({ invoice }) {
             {statusLabel}
           </span>
         </div>
-
       </div>
     </Link>
   );

@@ -3,13 +3,13 @@
 import { useCallback } from "react";
 
 export const DEFAULT_FILTERS = {
-  yieldMin: '',
-  yieldMax: '',
-  currency: '',
-  maturityFrom: '',
-  maturityTo: '',
-  sort: '',
-  sortDir: 'desc',
+  yieldMin: "",
+  yieldMax: "",
+  currency: "",
+  maturityFrom: "",
+  maturityTo: "",
+  sort: "",
+  sortDir: "desc",
 };
 
 export function hasActiveFilters(filters) {
@@ -27,7 +27,7 @@ export function hasActiveFilters(filters) {
  * Sort-column values that support direction toggling.
  * These are the base column keys (without a _asc/_desc suffix).
  */
-export const SORTABLE_COLUMNS = ['amount', 'yield'];
+export const SORTABLE_COLUMNS = ["amount", "yield"];
 
 /**
  * Given the current filters, return the active sort column and direction.
@@ -42,16 +42,16 @@ export function parseSortState(filters) {
   if (match) {
     return { column: match[1], dir: match[2] };
   }
-  return { column: sort, dir: sortDir || 'desc' };
+  return { column: sort, dir: sortDir || "desc" };
 }
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF'];
+const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CHF"];
 
 const SORT_OPTIONS = [
-  { value: '', label: 'Sort By' },
-  { value: 'amount', label: 'Amount' },
-  { value: 'yield', label: 'Yield' },
-  { value: 'maturity', label: 'Maturity' },
+  { value: "", label: "Sort By" },
+  { value: "amount", label: "Amount" },
+  { value: "yield", label: "Yield" },
+  { value: "maturity", label: "Maturity" },
 ];
 
 /** Render a small ↑↓ toggle button for asc/desc. */
@@ -64,13 +64,13 @@ function DirectionToggle({ column, filters, onFilterChange }) {
     onFilterChange({
       ...filters,
       sort: column,
-      sortDir: dir === 'asc' ? 'desc' : 'asc',
+      sortDir: dir === "asc" ? "desc" : "asc",
     });
   }, [isActive, filters, column, dir, onFilterChange]);
 
-  const nextDir = dir === 'asc' ? 'desc' : 'asc';
+  const nextDir = dir === "asc" ? "desc" : "asc";
   const ariaLabel = isActive
-    ? `Sort ${column} ${nextDir === 'asc' ? 'ascending' : 'descending'}`
+    ? `Sort ${column} ${nextDir === "asc" ? "ascending" : "descending"}`
     : `Sort ${column} direction`;
 
   return (
@@ -79,14 +79,14 @@ function DirectionToggle({ column, filters, onFilterChange }) {
       onClick={handleToggle}
       disabled={!isActive}
       aria-label={ariaLabel}
-      aria-sort={isActive ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      aria-sort={isActive ? (dir === "asc" ? "ascending" : "descending") : "none"}
       className={`rounded px-2 py-1 text-xs font-mono transition-colors select-none ${
         isActive
-          ? 'bg-cyan-900/40 text-cyan-300 hover:bg-cyan-800/60 border border-cyan-700'
-          : 'bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default'
+          ? "bg-cyan-900/40 text-cyan-300 hover:bg-cyan-800/60 border border-cyan-700"
+          : "bg-slate-800/50 text-slate-500 border border-slate-700 cursor-default"
       }`}
     >
-      {isActive && dir === 'asc' ? '↑' : '↓'}
+      {isActive && dir === "asc" ? "↑" : "↓"}
     </button>
   );
 }
@@ -101,9 +101,9 @@ export default function InvoiceFilters({ filters, onFilterChange, onClearFilters
 
   const handleSortColumnChange = useCallback(
     (column) => {
-      onFilterChange({ ...filters, sort: column, sortDir: filters.sortDir || 'desc' });
+      onFilterChange({ ...filters, sort: column, sortDir: filters.sortDir || "desc" });
     },
-    [filters, onFilterChange],
+    [filters, onFilterChange]
   );
 
   const active = hasActiveFilters(filters);

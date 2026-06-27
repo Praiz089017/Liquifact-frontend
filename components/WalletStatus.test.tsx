@@ -10,11 +10,7 @@ function setup() {
 }
 
 function renderWithProviders(ui: React.ReactElement) {
-  return render(
-    <ToastProvider>
-      {ui}
-    </ToastProvider>
-  );
+  return render(<ToastProvider>{ui}</ToastProvider>);
 }
 
 async function flushTimers(delayMs: number) {
@@ -24,7 +20,7 @@ async function flushTimers(delayMs: number) {
   });
 }
 
-describe.skip('WalletStatus (direct import)', () => {
+describe.skip("WalletStatus (direct import)", () => {
   beforeEach(() => {
     jest.useFakeTimers();
   });

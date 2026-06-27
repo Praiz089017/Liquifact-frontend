@@ -150,12 +150,12 @@ export function ToastProvider({ children }) {
   );
 
   useEffect(() => {
-  const currentTimers = timers.current;
-  return () => {
-    currentTimers.forEach((timeout) => clearTimeout(timeout));
-    currentTimers.clear();
-  };
-}, []);
+    const currentTimers = timers.current;
+    return () => {
+      currentTimers.forEach((timeout) => clearTimeout(timeout));
+      currentTimers.clear();
+    };
+  }, []);
 
   const value = useMemo(
     () => ({

@@ -1,18 +1,22 @@
 // client directive
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/Button";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceCard from "@/components/InvoiceCard";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import Pagination from "@/components/Pagination";
-import InvoiceFilters, { DEFAULT_FILTERS, parseSortState } from "@/components/InvoiceFilters";
+import InvoiceFilters, {
+  DEFAULT_FILTERS,
+  parseSortState,
+  hasActiveFilters,
+} from "@/components/InvoiceFilters";
 import { copy } from "../copy/en";
 import { fetchInvestableInvoices } from "../../lib/api/invoices";
 import InvoiceSearch from "@/components/InvoiceSearch";
-import InvoiceFilters, { DEFAULT_FILTERS, hasActiveFilters } from "@/components/InvoiceFilters";
 
 export const PAGE_SIZE = 10;
 
@@ -143,7 +147,6 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   const [statusMessage, setStatusMessage] = useState("");
   const [paginationAnnouncement, setPaginationAnnouncement] = useState("");
   const [loadError, setLoadError] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
 
   const initialSearch = searchParams.get("search") || "";
   const initialFilters = { ...DEFAULT_FILTERS };
@@ -234,9 +237,7 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
     if (debouncedQuery.trim()) {
       const q = debouncedQuery.trim().toLowerCase();
       list = list.filter(
-        (inv) =>
-          inv.issuer?.toLowerCase().includes(q) ||
-          inv.id?.toLowerCase().includes(q),
+        (inv) => inv.issuer?.toLowerCase().includes(q) || inv.id?.toLowerCase().includes(q)
       );
     }
 

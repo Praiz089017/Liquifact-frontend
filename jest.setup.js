@@ -1,31 +1,31 @@
-require('@testing-library/jest-dom');
+require("@testing-library/jest-dom");
 
-jest.mock('jest-axe', () => {
+jest.mock("jest-axe", () => {
   return {
     axe: async () => ({ violations: [] }),
     toHaveNoViolations: {
       toHaveNoViolations() {
         return {
           pass: true,
-          message: () => '',
+          message: () => "",
         };
       },
     },
   };
 });
 
-const { toHaveNoViolations } = require('jest-axe');
+const { toHaveNoViolations } = require("jest-axe");
 expect.extend(toHaveNoViolations);
 
 jest.setTimeout(30000);
 
-if (typeof global.Request === 'undefined') {
+if (typeof global.Request === "undefined") {
   global.Request = class Request {};
   global.Response = class Response {};
   global.Headers = class Headers {};
 }
 
-jest.mock('next/server', () => {
+jest.mock("next/server", () => {
   return {
     NextResponse: class MockNextResponse {
       constructor(body, init) {
@@ -34,12 +34,12 @@ jest.mock('next/server', () => {
         this.headers = {
           get(name) {
             return init?.headers?.[name] || null;
-          }
+          },
         };
       }
       async text() {
         return this.body;
       }
-    }
+    },
   };
 });
