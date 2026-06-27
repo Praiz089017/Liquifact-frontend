@@ -1,14 +1,9 @@
 "use client";
 
-import { useState, useEffect, useContext } from "react";
-import Button from "./Button";
-import { useToast, ToastContext } from "./ToastProvider";
-import { copy } from "../app/copy/en";
-import { useWallet } from "./WalletProvider";
-
-import { copy } from "../app/copy/en";
-import { TRUSTED_WALLET_INSTALL_URL } from "../app/copy/constants";
-import Spinner from "./Spinner";
+import { useState } from 'react';
+import Button from './Button';
+import { useToast } from './ToastProvider';
+import { copy } from '../app/copy/en';
 
 // Wallet connection states
 // This is now imported from WalletProvider, but kept here for export stability
@@ -55,7 +50,7 @@ export default function WalletStatus() {
 
     setTimeout(() => {
       // Simulate different scenarios for testing
-      const scenarios = ["success", "error", "wrong_network", "no_wallet"];
+      const scenarios = ['success', 'error', 'wrong_network', 'no_wallet'];
       const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
       const mockWalletData = {
         address: "GABC...XYZ123",
@@ -79,8 +74,9 @@ export default function WalletStatus() {
           setLocalError(copy.wallet.errorWrongNetwork);
           toast.error(copy.wallet.toastWrongNetworkMsg, copy.wallet.toastWrongNetworkTitle);
           break;
-        case "no_wallet":
-          setLocalState(WALLET_STATES.NO_WALLET);
+        case 'no_wallet':
+          setWalletState(WALLET_STATES.NO_WALLET);
+          setError(null);
           break;
       }
     }, 1500);
@@ -159,7 +155,7 @@ export default function WalletStatus() {
       case WALLET_STATES.CONNECTING:
         return {
           buttonText: copy.wallet.connectingButton,
-          buttonVariant: "loading",
+          buttonVariant: 'primary',
           helperText: copy.wallet.helperConnecting,
           disabled: true,
           showAddress: false,
@@ -226,28 +222,43 @@ export default function WalletStatus() {
   const isDisabled = isConnecting;
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Inline error banner for ERROR and WRONG_NETWORK states */}
-      {(rawState === WALLET_STATES.ERROR || rawState === WALLET_STATES.WRONG_NETWORK) &&
-        derivedError && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-slate-50 shadow-sm"
-            data-testid="wallet-error-banner"
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-200 ring-1 ring-red-300/30">
-                <span aria-hidden="true" className="text-sm font-semibold">
-                  !
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm leading-5 text-slate-200">{derivedError}</p>
-              </div>
-            </div>
+    <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Status dot */}
+        <div
+          className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+            walletState === WALLET_STATES.CONNECTED
+              ? 'bg-green-500'
+              : walletState === WALLET_STATES.CONNECTING
+                ? 'bg-yellow-500 animate-pulse'
+                : walletState === WALLET_STATES.ERROR || walletState === WALLET_STATES.WRONG_NETWORK
+                  ? 'bg-red-500'
+                  : 'bg-slate-600'
+          }`}
+          aria-hidden="true"
+        />
+
+        {/* Wallet address or helper text */}
+        {config.showAddress && walletData ? (
+          <div className="flex flex-col">
+            <span className="text-sm font-mono text-slate-300">{walletData.address}</span>
+            <span className="text-xs text-slate-500">{walletData.balance}</span>
           </div>
+        ) : (
+          <span className="text-sm text-slate-400 max-w-xs">{config.helperText}</span>
         )}
+      </div>
+
+      <Button
+        variant={config.buttonVariant}
+        loading={walletState === WALLET_STATES.CONNECTING}
+        disabled={config.disabled}
+        onClick={handleClick}
+        aria-label={config.buttonText}
+        aria-describedby="wallet-helper-text"
+      >
+        {config.buttonText}
+      </Button>
 
       {/* Main wallet status container */}
       <div className="flex items-center gap-4">

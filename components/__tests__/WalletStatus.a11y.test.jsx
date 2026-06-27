@@ -3,8 +3,7 @@ import { render } from '@testing-library/react';
 import { ToastProvider } from '../ToastProvider';
 import { WalletProvider } from '../WalletProvider'; // Imported the missing provider
 import WalletStatus from '../WalletStatus';
-import { axe, toHaveNoViolations } from 'jest-axe';
-import '@testing-library/jest-dom';
+import { axe } from 'jest-axe';
 
 expect.extend(toHaveNoViolations);
 
