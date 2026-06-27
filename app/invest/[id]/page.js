@@ -1,10 +1,12 @@
 "use client";
 
+import Button from "@/components/Button";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
+import StatusPill from "@/components/StatusPill";
 import WalletStatus from "@/components/WalletStatus";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import {
@@ -153,7 +155,9 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
                 </div>
                 <div>
                   <dt className="text-slate-500">Status</dt>
-                  <dd className="text-slate-100">{invoice.status}</dd>
+                  <dd className="text-slate-100">
+                    <StatusPill status={invoice.status ?? ""} />
+                  </dd>
                 </div>
               </dl>
             </section>
