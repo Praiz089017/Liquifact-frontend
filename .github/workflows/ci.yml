@@ -40,3 +40,33 @@ jobs:
 
       - name: Test Accessibility
         run: npm test --silent
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+      
+      # Audit dependencies for high or critical vulnerabilities.
+      # As the app handles financial flows and wallet integration,
+      # keeping dependencies secure is critical.
+      # To waive a false-positive, use 'npm audit fix' or update the package manually.
+      - name: Dependency Audit
+        run: npm audit --audit-level=high
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is required for gitleaks to scan the full history/diff.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          
+      # Run Gitleaks to detect hardcoded secrets (API keys, tokens, etc.) in the repository.
+      - name: Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
