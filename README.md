@@ -48,13 +48,13 @@ docs/api-integration.md
 
 ## Development
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start dev server (Turbopack) |
-| `npm run lint` | Run ESLint |
-| `npm test` | Run Jest/jsdom unit and accessibility tests |
-| `npm run build` | Production build |
-| `npm run start` | Start production server |
+| Command            | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| `npm run dev`      | Start dev server (Turbopack)                            |
+| `npm run lint`     | Run ESLint                                              |
+| `npm test`         | Run Jest/jsdom unit and accessibility tests             |
+| `npm run build`    | Production build                                        |
+| `npm run start`    | Start production server                                 |
 | `npm run test:e2e` | Run Playwright smoke tests (toast & invest marketplace) |
 
 ### Environment variables
@@ -83,6 +83,10 @@ The invoices page header also uses the shared `NavMenu` component, replacing the
 ### Marketplace search
 
 The Invest page (`app/invest/page.js`) includes an issuer search field above the invoice list. Typing in the field filters invoices by case-insensitive substring match on `issuer`. Input is debounced at **200ms** so the text field stays responsive while filtering waits for settled input. When a filter is active, the `aria-live` status region announces the match count (e.g. "2 of 3 invoices match"). A distinct "no matches" state is shown when the filter yields zero results, separate from the empty-marketplace state.
+
+### Error recovery
+
+If the marketplace fails to load invoices, an `ErrorBanner` is rendered with a **"Try again"** action. Clicking it resets the component to the loading skeleton, cancels any stale in-flight request via `AbortController`, and re-invokes `loadInvoices`. The polite `aria-live` status region is cleared on retry and re-announced once the new load settles.
 
 ---
 
@@ -153,6 +157,7 @@ git diff --exit-code package-lock.json  # exits 1 if drifted
 Dependabot opens weekly PRs on Monday to keep npm packages and GitHub Actions current.
 
 PRs are grouped to limit noise:
+
 - **nextjs-react** — `next`, `react`, `react-dom`, and their `@types` packages together (coordinated bumps).
 - **dev-tooling** — all remaining `devDependencies` in one PR.
 - **github-actions** — action version bumps in a separate PR.
@@ -199,18 +204,23 @@ The invoices page now renders an SME invoice table below `UploadZone` using `Inv
 - If no invoices are returned, it shows `copy.invoices.emptyState` text.
 - If invoice loading fails, an accessible `ErrorBanner` is displayed with localized fallback copy.
 - After `UploadZone` successfully uploads a document, `onUploadSuccess` appends a new optimistic invoice entry immediately without requiring a manual browser refresh.
+
 ### Wallet connection (`WalletProvider`)
 
 Wallet state is shared app-wide via `WalletProvider`, mounted in `app/layout.js` inside `ToastProvider`. Any client component can read connection state with `useWallet()`:
 
 ```jsx
-import { useWallet } from '@/components/WalletProvider';
+import { useWallet } from "@/components/WalletProvider";
 
 function FundInvoiceButton() {
   const { state, walletData, connect, disconnect } = useWallet();
 
-  if (state !== 'connected') {
-    return <button type="button" onClick={() => connect()}>Connect wallet</button>;
+  if (state !== "connected") {
+    return (
+      <button type="button" onClick={() => connect()}>
+        Connect wallet
+      </button>
+    );
   }
 
   return <span>Ready to fund as {walletData.address}</span>;
@@ -219,14 +229,14 @@ function FundInvoiceButton() {
 
 **Persistence:** On successful connect, a minimal snapshot is saved to `localStorage` under `liquifact-wallet-snapshot`:
 
-| Field | Persisted | Notes |
-|-------|-----------|-------|
-| `version` | Yes | Schema version (`1`) |
-| `state` | Yes | Only `connected` is restored |
-| `address` | Yes | Truncated display form only (e.g. `GABC...XYZ123`) |
-| `network` | Yes | `public` or `testnet` |
-| `balance` | **No** | Fetched live after real wallet integration |
-| Private keys / secrets | **Never** | Rejected on read if detected |
+| Field                  | Persisted | Notes                                              |
+| ---------------------- | --------- | -------------------------------------------------- |
+| `version`              | Yes       | Schema version (`1`)                               |
+| `state`                | Yes       | Only `connected` is restored                       |
+| `address`              | Yes       | Truncated display form only (e.g. `GABC...XYZ123`) |
+| `network`              | Yes       | `public` or `testnet`                              |
+| `balance`              | **No**    | Fetched live after real wallet integration         |
+| Private keys / secrets | **Never** | Rejected on read if detected                       |
 
 The provider rehydrates from storage **after mount** (SSR-safe). `disconnect()` clears storage immediately. See WALLET_INTEGRATION_CONTRACT.md for the full integration contract.
 
@@ -267,6 +277,7 @@ export default function MyPage() {
 // With Stellar wallet integration
 <NavMenu walletLabel="Freighter" onWalletClick={handleConnectWallet} />;
 ```
+
 ---
 
 ## Design Tokens
@@ -296,7 +307,6 @@ The home page health check now:
 - Aborts hung requests.
 - Safely handles HTML and malformed JSON responses.
 - Reports one of the following status states with distinct visual treatments:
-
   - **Connected** (green badge with ✓ icon) — Backend is healthy and responding correctly
   - **Degraded** (amber badge with ⚠ icon) — Backend responded but with an error status (e.g., HTTP 500)
   - **Unreachable** (red badge with ✕ icon) — Backend could not be reached or request timed out
@@ -329,28 +339,28 @@ Every response carries a baseline set of security headers, attached via the
 can be unit-tested and later reused by middleware for per-request nonces). Coverage is
 asserted in `security/headers.test.tsx`.
 
-| Header | Value | Purpose |
-|--------|-------|---------|
-| `Content-Security-Policy` | see below | Primary defence against XSS / data injection |
-| `X-Content-Type-Options` | `nosniff` | Stops MIME-sniffing away from the declared type |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | Avoids leaking invoice/wallet IDs in the `Referer` |
-| `X-Frame-Options` | `DENY` | Legacy clickjacking protection (complements `frame-ancestors`) |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), …` | Disables unused powerful browser features |
-| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Forces HTTPS (ignored over plain http/localhost) |
-| `Cross-Origin-Opener-Policy` | `same-origin` | Isolates the browsing context group |
+| Header                       | Value                                                     | Purpose                                                        |
+| ---------------------------- | --------------------------------------------------------- | -------------------------------------------------------------- |
+| `Content-Security-Policy`    | see below                                                 | Primary defence against XSS / data injection                   |
+| `X-Content-Type-Options`     | `nosniff`                                                 | Stops MIME-sniffing away from the declared type                |
+| `Referrer-Policy`            | `strict-origin-when-cross-origin`                         | Avoids leaking invoice/wallet IDs in the `Referer`             |
+| `X-Frame-Options`            | `DENY`                                                    | Legacy clickjacking protection (complements `frame-ancestors`) |
+| `Permissions-Policy`         | `camera=(), microphone=(), geolocation=(), payment=(), …` | Disables unused powerful browser features                      |
+| `Strict-Transport-Security`  | `max-age=63072000; includeSubDomains; preload`            | Forces HTTPS (ignored over plain http/localhost)               |
+| `Cross-Origin-Opener-Policy` | `same-origin`                                             | Isolates the browsing context group                            |
 
 **Content-Security-Policy directives** (each is annotated in `lib/securityHeaders.mjs`):
 
-| Directive | Value | Why |
-|-----------|-------|-----|
-| `default-src` | `'self'` | Deny-by-default for anything not listed below |
-| `script-src` | `'self' 'unsafe-inline'` (+ `'unsafe-eval'` in dev only) | Next.js App Router injects an inline bootstrap script. `'unsafe-eval'` is added **only** under `next dev` for React Fast Refresh and never ships to production |
-| `style-src` | `'self' 'unsafe-inline' https://fonts.googleapis.com` | `'unsafe-inline'` is required because **next/font** and Tailwind/Next inject inline `<style>` tags and `style` attributes (critical CSS + font variables) that are generated per build and cannot be hashed ahead of time. This relaxation is scoped to styles only — scripts stay far more tightly controlled |
-| `font-src` | `'self' https://fonts.gstatic.com data:` | Geist is self-hosted by `next/font` at build time; the Google Fonts host and `data:` are defensive fallbacks |
-| `connect-src` | `'self' <NEXT_PUBLIC_API_URL origin>` (+ `ws: wss:` in dev) | **Allow-lists the backend API origin** so the home page health check and future `fetch()` calls are not blocked. `ws:`/`wss:` are added only in dev for Hot Module Replacement |
-| `img-src` | `'self' data: blob:` | Inline/generated images and the favicon |
-| `frame-ancestors` | `'none'` | Blocks the app from being framed (clickjacking) |
-| `base-uri` / `object-src` / `form-action` | `'self'` / `'none'` / `'self'` | Prevent `<base>` hijacking, plugins, and off-origin form posts |
+| Directive                                 | Value                                                       | Why                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default-src`                             | `'self'`                                                    | Deny-by-default for anything not listed below                                                                                                                                                                                                                                                                  |
+| `script-src`                              | `'self' 'unsafe-inline'` (+ `'unsafe-eval'` in dev only)    | Next.js App Router injects an inline bootstrap script. `'unsafe-eval'` is added **only** under `next dev` for React Fast Refresh and never ships to production                                                                                                                                                 |
+| `style-src`                               | `'self' 'unsafe-inline' https://fonts.googleapis.com`       | `'unsafe-inline'` is required because **next/font** and Tailwind/Next inject inline `<style>` tags and `style` attributes (critical CSS + font variables) that are generated per build and cannot be hashed ahead of time. This relaxation is scoped to styles only — scripts stay far more tightly controlled |
+| `font-src`                                | `'self' https://fonts.gstatic.com data:`                    | Geist is self-hosted by `next/font` at build time; the Google Fonts host and `data:` are defensive fallbacks                                                                                                                                                                                                   |
+| `connect-src`                             | `'self' <NEXT_PUBLIC_API_URL origin>` (+ `ws: wss:` in dev) | **Allow-lists the backend API origin** so the home page health check and future `fetch()` calls are not blocked. `ws:`/`wss:` are added only in dev for Hot Module Replacement                                                                                                                                 |
+| `img-src`                                 | `'self' data: blob:`                                        | Inline/generated images and the favicon                                                                                                                                                                                                                                                                        |
+| `frame-ancestors`                         | `'none'`                                                    | Blocks the app from being framed (clickjacking)                                                                                                                                                                                                                                                                |
+| `base-uri` / `object-src` / `form-action` | `'self'` / `'none'` / `'self'`                              | Prevent `<base>` hijacking, plugins, and off-origin form posts                                                                                                                                                                                                                                                 |
 
 The backend origin is read from `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`).
 If you point the app at a different backend, that origin is automatically added to
@@ -580,7 +590,6 @@ As the application handles financial flows and wallet integration, our CI pipeli
 2. **Secret Scanning** (`gitleaks`):
    - Scans the repository and pull request diffs for leaked secrets, API keys, and sensitive tokens.
    - If a scan fails due to a false positive, verify the flagged string is safe and (if necessary) add a `.gitleaksignore` file or a `#gitleaks:allow` inline comment to waive it.
-
 
 ---
 

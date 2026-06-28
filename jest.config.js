@@ -17,13 +17,4 @@ const config = {
   transformIgnorePatterns: ["/node_modules/(?!(next|@next)/)"],
 };
 
-const createJestConfig = nextJest({
-  dir: './',
-});
-/** @type {import('jest').Config} */
-const config = {
-  // Add any custom Jest config here
-  testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-};
-module.exports = createJestConfig(config);
+module.exports = config;

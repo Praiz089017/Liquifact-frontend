@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from 'react';
-import Button from './Button';
-import { useToast } from './ToastProvider';
-import { copy } from '../app/copy/en';
+import { useState } from "react";
+import Button from "./Button";
+import { useToast } from "./ToastProvider";
+import { copy } from "../app/copy/en";
+import { useWallet, WALLET_STATES } from "./WalletProvider";
 
 // Wallet connection states
 // This is now imported from WalletProvider, but kept here for export stability
@@ -26,8 +27,7 @@ const mockWalletData = {
 export default function WalletStatus() {
   // Always call the hook unconditionally to satisfy the Rules of Hooks.
   // WalletProvider will be present in the app/tests that render this component.
-  const { state, walletData, connect, disconnect } = useWallet();
-
+  const { state, connect, walletState, disconnect } = useWallet();
 
   // 2. Safe useWallet context lookup (no-throw fallback)
   let wallet = null;
@@ -50,7 +50,7 @@ export default function WalletStatus() {
 
     setTimeout(() => {
       // Simulate different scenarios for testing
-      const scenarios = ['success', 'error', 'wrong_network', 'no_wallet'];
+      const scenarios = ["success", "error", "wrong_network", "no_wallet"];
       const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
       const mockWalletData = {
         address: "GABC...XYZ123",
@@ -74,7 +74,7 @@ export default function WalletStatus() {
           setLocalError(copy.wallet.errorWrongNetwork);
           toast.error(copy.wallet.toastWrongNetworkMsg, copy.wallet.toastWrongNetworkTitle);
           break;
-        case 'no_wallet':
+        case "no_wallet":
           setWalletState(WALLET_STATES.NO_WALLET);
           setError(null);
           break;
@@ -113,17 +113,16 @@ export default function WalletStatus() {
   };
 
   const handleDisconnect = () => {
-    if (isUsingContext) {
-      const disconnectFn = wallet.disconnect || wallet.disconnectWallet;
-      if (typeof disconnectFn === "function") {
-        disconnectFn();
+    try {
+      if (isUsingContext) {
+        const disconnectFn = wallet.disconnect || wallet.disconnectWallet;
+
+        if (typeof disconnectFn === "function") {
+          disconnectFn();
+        }
       }
     } catch (e) {
-      console.error(
-        "Invalid wallet installation URL:",
-        TRUSTED_WALLET_INSTALL_URL,
-        e,
-      );
+      console.error("Failed to disconnect wallet:", e);
     }
   };
 
@@ -148,27 +147,27 @@ export default function WalletStatus() {
     }
   };
 
-  const getButtonText = () => {
+  const getStateConfig = (state) => {
     switch (state) {
       case WALLET_STATES.DISCONNECTED:
-        return copy.wallet.connectButton;
+        return {
+          buttonText: copy.wallet.connectButton,
+          buttonVariant: "primary",
+          helperText: copy.wallet.helperDisconnected,
+          disabled: false,
+          showAddress: false,
+        };
+
       case WALLET_STATES.CONNECTING:
         return {
           buttonText: copy.wallet.connectingButton,
-          buttonVariant: 'primary',
+          buttonVariant: "loading",
           helperText: copy.wallet.helperConnecting,
           disabled: true,
           showAddress: false,
         };
 
-      case WALLET_STATES.CONNECTED: {
-        const displayAddress = walletData?.address
-          ? walletData.address.includes("...")
-            ? walletData.address
-            : walletData.address.length > 12
-              ? `${walletData.address.slice(0, 4)}...${walletData.address.slice(-2)}`
-              : walletData.address
-          : "";
+      case WALLET_STATES.CONNECTED:
         return {
           buttonText: copy.wallet.disconnectButton,
           buttonVariant: "secondary",
@@ -178,9 +177,7 @@ export default function WalletStatus() {
           ),
           disabled: false,
           showAddress: true,
-          displayAddress,
         };
-      }
 
       case WALLET_STATES.ERROR:
         return {
@@ -216,8 +213,8 @@ export default function WalletStatus() {
 
   const config = getStateConfig(rawState);
 
-  const buttonText = getButtonText();
-  const helperText = getHelperText();
+  // const buttonText = getButtonText();
+  // const helperText = getHelperText();
   const isConnecting = state === WALLET_STATES.CONNECTING;
   const isDisabled = isConnecting;
 
@@ -228,12 +225,12 @@ export default function WalletStatus() {
         <div
           className={`w-2 h-2 rounded-full transition-colors duration-200 ${
             walletState === WALLET_STATES.CONNECTED
-              ? 'bg-green-500'
+              ? "bg-green-500"
               : walletState === WALLET_STATES.CONNECTING
-                ? 'bg-yellow-500 animate-pulse'
+                ? "bg-yellow-500 animate-pulse"
                 : walletState === WALLET_STATES.ERROR || walletState === WALLET_STATES.WRONG_NETWORK
-                  ? 'bg-red-500'
-                  : 'bg-slate-600'
+                  ? "bg-red-500"
+                  : "bg-slate-600"
           }`}
           aria-hidden="true"
         />

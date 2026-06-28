@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import NavMenu from '../components/NavMenu';
-import { copy } from './copy/en';
-import { getHealth } from '../lib/api/health';
+import { useRef, useState, useEffect } from "react";
+import Link from "next/link";
+import NavMenu from "../components/NavMenu";
+import { copy } from "./copy/en";
+import { getHealth } from "../lib/api/health";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 

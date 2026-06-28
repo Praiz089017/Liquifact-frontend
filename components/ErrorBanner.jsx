@@ -39,7 +39,7 @@ export default function ErrorBanner({
       {actionLabel ? (
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Button variant="primary" onClick={onAction}>
-            Retry
+            {actionLabel}
           </Button>
         </div>
       ) : null}

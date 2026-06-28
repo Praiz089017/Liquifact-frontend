@@ -1,22 +1,16 @@
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
-import InvoiceSearch from "@/components/InvoiceSearch";
-import { sanitize } from "@/utils/sanitizeUrl";
-
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { hasAnyActiveFilters, parseSortState } from "@/components/InvoiceFilters";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import InvoiceSearch from "@/components/InvoiceSearch";
+import InvoiceFilters, { DEFAULT_FILTERS } from "@/components/InvoiceFilters";
 import Pagination from "@/components/Pagination";
 import { copy } from "../copy/en";
 import { fetchInvestableInvoices } from "../../lib/api/invoices";
-import InvoiceSearch from "@/components/InvoiceSearch";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -30,10 +24,7 @@ export const SEARCH_DEBOUNCE_MS = 300;
  * @param {number} [options.filteredCount] - Number of invoices matching the active filter.
  * @returns {string}
  */
-export function getInvoiceLoadAnnouncement(
-  invoices,
-  { filterActive, filteredCount } = {},
-) {
+export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCount } = {}) {
   if (!Array.isArray(invoices) || invoices.length === 0) {
     return "No invoices available";
   }
@@ -110,6 +101,11 @@ export function applySortToList(list, filters) {
  * resets whenever a new invoice set arrives so filter changes stay
  * non-breaking.
  *
+ * On load failure, an ErrorBanner is rendered with a "Try again" action
+ * that re-runs the load. The retry resets state to loading, cancels any
+ * stale in-flight request via AbortController, and re-announces via the
+ * polite status region once the new load settles.
+ *
  * @param {object}   props
  * @param {Function} [props.loadInvoices] - Async function that resolves to an
  *   invoice array.  Defaults to the mock loader; injectable for testing.
@@ -121,8 +117,17 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
 
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [searchQuery, setSearchQuery] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [loadError, setLoadError] = useState("");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+
+  /**
+   * Incrementing retryKey causes the load effect to re-run, implementing
+   * the retry behaviour. It is the only mechanism used to trigger a reload —
+   * the effect itself is otherwise idempotent for the same loadInvoices ref.
+   */
+  const [retryKey, setRetryKey] = useState(0);
 
   // Tracks the invoices reference paging was last reset for. Compared during
   // render (rather than in an effect) per the React-recommended pattern for
@@ -136,19 +141,73 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   /** Ref forwarded to the "Load more" button for focus management. */
   const loadMoreRef = useRef(null);
 
-  // Sync state changes back to the URL using replace (no history entry)
-  const syncToUrl = () => {
-    const params = new URLSearchParams();
-    if (searchTerm) params.set("q", searchTerm);
-    if (sortOption) params.set("sort", sortOption);
-    if (activeFilters.length) params.set("filters", activeFilters.join(","));
-    const query = params.toString();
-    router.replace(query ? `?${query}` : "/invest");
-  };
+  /**
+   * Resets error/loading state and re-runs the load effect.
+   *
+   * Sets invoices back to null (loading skeleton) and clears loadError so the
+   * error banner disappears immediately on click. Bumping retryKey causes the
+   * effect below to re-run; its cleanup will abort any still-in-flight stale
+   * request from a previous attempt before starting a fresh one.
+   */
+  const reload = useCallback(() => {
+    setInvoices(null);
+    setLoadError("");
+    setStatusMessage("");
+    setRetryKey((k) => k + 1);
+  }, []);
 
-  // Effect: update URL whenever relevant state changes
+  // Debounced search term
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
-    let active = true;
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // Filtered + sorted invoice list
+  const filteredInvoices = useMemo(() => {
+    if (!Array.isArray(invoices)) return [];
+    let list = invoices;
+
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
+      list = list.filter((inv) => inv.issuer?.toLowerCase().includes(q));
+    }
+    if (filters.currency) {
+      list = list.filter((inv) => inv.currency === filters.currency);
+    }
+    if (filters.yieldMin !== "") {
+      const min = parseFloat(filters.yieldMin);
+      list = list.filter((inv) => parseYield(inv.yield) >= min);
+    }
+    if (filters.yieldMax !== "") {
+      const max = parseFloat(filters.yieldMax);
+      list = list.filter((inv) => parseYield(inv.yield) <= max);
+    }
+    if (filters.maturityFrom) {
+      list = list.filter((inv) => inv.dueDate >= filters.maturityFrom);
+    }
+    if (filters.maturityTo) {
+      list = list.filter((inv) => inv.dueDate <= filters.maturityTo);
+    }
+    return applySortToList(list, filters);
+  }, [invoices, debouncedSearch, filters]);
+
+  const filterActive = hasAnyActiveFilters(filters, debouncedSearch);
+
+  /**
+   * Effect: fetch invoices on mount and on every retry.
+   *
+   * - Uses AbortController so unmount or a new retry cancels the in-flight
+   *   request cleanly (no stale state updates, no React warnings).
+   * - isActive guards the setState calls so a slow prior attempt that resolves
+   *   after a retry has already started is silently discarded.
+   * - retryKey is the sole dependency that forces a re-run on retry; it does
+   *   not interact with the abort/isActive logic in any racy way because the
+   *   cleanup always runs before the next effect body executes.
+   */
+  useEffect(() => {
+    let isActive = true;
+    const controller = new AbortController();
 
     const announceLoadCompletion = async () => {
       try {
@@ -159,7 +218,7 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
         const normalizedInvoices = Array.isArray(nextInvoices) ? nextInvoices : [];
 
         setInvoices(normalizedInvoices);
-        setStatusMessage(getInvoiceLoadAnnouncement(normalizedInvoices));
+        setLoadError("");
       } catch {
         if (!isActive) return;
 
@@ -175,9 +234,30 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
       isActive = false;
       controller.abort();
     };
-  }, [loadInvoices]);
+    // retryKey triggers a fresh load on retry without changing loadInvoices.
+  }, [loadInvoices, retryKey]);
 
-  // ── Load-more handler ─────────────────────────────────────────────────────
+  // Update the live-region status whenever the filtered list or visible count changes.
+  useEffect(() => {
+    if (!Array.isArray(invoices)) return;
+    if (filterActive) {
+      setStatusMessage(
+        getInvoiceLoadAnnouncement(invoices, {
+          filterActive: true,
+          filteredCount: filteredInvoices.length,
+        })
+      );
+    } else if (visibleCount < filteredInvoices.length) {
+      setStatusMessage(getPaginationAnnouncement(visibleCount, filteredInvoices.length));
+    } else if (visibleCount > PAGE_SIZE) {
+      // After Load more brings us to the last page, announce pagination format
+      setStatusMessage(getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length));
+    } else {
+      setStatusMessage(getInvoiceLoadAnnouncement(invoices));
+    }
+  }, [filteredInvoices, filterActive, invoices, visibleCount]);
+
+  // ── Load-more handler ──────────────────────────────────────────────────────
   /**
    * Appends the next PAGE_SIZE items and updates the live-region status.
    * Focus is moved back to the "Load more" button (if it still exists) so
@@ -185,78 +265,101 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
    */
   const handleLoadMore = useCallback(() => {
     setVisibleCount((prev) => {
-      const next = Math.min(prev + normalizedPagination.pageSize, filteredInvoices.length || prev);
-      const total = filteredInvoices.length;
-      setStatusMessage(getPaginationAnnouncement(next, total));
-      return next;
+      return Math.min(prev + PAGE_SIZE, filteredInvoices.length);
     });
-
-    // Restore focus on next tick so the button is still in the DOM when we focus it.
     setTimeout(() => {
       loadMoreRef.current?.focus();
     }, 0);
-  }, [filteredInvoices, normalizedPagination.pageSize]);
+  }, [filteredInvoices.length]);
 
-  const visibleInvoices = filteredInvoices.slice(0, visibleCount);
+  // const visibleInvoices = filteredInvoices.slice(0, visibleCount);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="border-b border-slate-800 px-6 py-4">
-        <Link href="/" className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline">
+        <Link
+          href="/"
+          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
+        >
           ← LiquiFact
         </Link>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-12">
+        {/* Polite live region – announced to screen readers on every state change */}
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {statusMessage}
+        </div>
+
         <h1 className="text-2xl font-bold mb-2">Invest</h1>
         <p className="text-slate-400 mb-8">
-          Browse tokenized invoices and fund them. Estimated yield is shown for educational purposes; actual payment is received at invoice maturity.
+          Browse tokenized invoices and fund them. Estimated yield is shown for educational
+          purposes; actual payment is received at invoice maturity.
         </p>
-      </div>
 
-        {/* 
+        {/*
           ACCESSIBILITY DESIGN (Issue #91):
-          - We wrap the filter group in a <fieldset> with `aria-disabled="true"` to announce the preview/disabled 
+          - We wrap the filter group in a <fieldset> with `aria-disabled="true"` to announce the preview/disabled
             state to screen readers while keeping all controls discoverable in the tab order (unlike native `disabled`).
-          - `aria-describedby` programmatically links the fieldset to the visible "Soon" badge, ensuring that 
+          - `aria-describedby` programmatically links the fieldset to the visible "Soon" badge, ensuring that
             assistive technologies announce the "coming soon" status when users navigate to the filters.
           - We use a no-op handler structure (passing empty handlers) and CSS `pointer-events-none` to prevent
             interaction while keeping the controls focusable.
           - `opacity-60` is applied only to the inner controls container to ensure the "Soon" label itself stays
             fully opaque for maximum contrast (WCAG AA compliant).
         */}
-        <fieldset 
+        <div className="mb-4">
+          <InvoiceSearch
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search by issuer name"
+          />
+        </div>
+
+        <fieldset
           className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"
           aria-disabled="true"
           aria-describedby="filters-coming-soon"
         >
           <legend className="sr-only">Marketplace Filters</legend>
-          <div id="filters-coming-soon" className="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300">
+          <div
+            id="filters-coming-soon"
+            className="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
+          >
             Soon: These filter controls are currently unavailable.
           </div>
           <div className="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none">
-            <InvoiceSearch 
-              value={searchQuery} 
-              onChange={/* no-op handler to keep it read-only but focusable */ () => {}} 
-            />
+            {/* InvoiceFilters only — search moved above */}
             <InvoiceFilters
               filters={filters}
-              onFilterChange={/* no-op handler to keep it read-only but focusable */ () => {}}
-              onClearFilters={/* no-op handler to keep it read-only but focusable */ () => {}}
+              onFilterChange={setFilters}
+              onClearFilters={() => setFilters(DEFAULT_FILTERS)}
             />
           </div>
         </fieldset>
 
-        {invoices === null ? (
+        {/* Error state – retryable */}
+        {loadError ? (
+          <ErrorBanner
+            title={copy.invest.errorTitle}
+            description={loadError}
+            actionLabel="Try again"
+            onAction={reload}
+          />
+        ) : invoices === null ? (
           <InvoiceListSkeleton rows={3} />
         ) : invoices.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
             No investable invoices. Connect wallet to see the marketplace.
           </div>
+        ) : filteredInvoices.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
+            No invoices match your filters.
+          </div>
         ) : (
           <>
-            <ul className="space-y-4">
-              {invoices.map((inv) => (
+            <ul aria-label="Investable invoices" className="space-y-4">
+              {filteredInvoices.slice(0, visibleCount).map((inv) => (
                 <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
                   <div className="flex items-center justify-between mb-3">
                     <Link
@@ -270,19 +373,37 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
                     </span>
                   </div>
                   <div className="flex gap-6 text-sm text-slate-400">
-                    <span>{inv.currency}&nbsp;{inv.amount}</span>
+                    <span>
+                      {inv.currency}&nbsp;{inv.amount}
+                    </span>
                     <span>Est. yield&nbsp;{inv.yield}</span>
                     <span>Maturity&nbsp;{inv.dueDate}</span>
                   </div>
                 </li>
               ))}
             </ul>
+            {visibleCount < filteredInvoices.length && (
+              <button
+                ref={loadMoreRef}
+                type="button"
+                onClick={handleLoadMore}
+                aria-label="Load more invoices"
+                className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
+              >
+                Load more
+              </button>
+            )}
             <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
-              Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity.
+              Note: Yield references are educational only and reflect on-chain basis-point
+              assumptions. Invoice contracts settle at maturity.
             </div>
           </>
         )}
       </main>
     </div>
   );
+}
+
+export default function InvestPage() {
+  return <InvestMarketplace />;
 }
