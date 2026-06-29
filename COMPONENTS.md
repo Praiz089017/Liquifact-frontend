@@ -454,7 +454,7 @@ Locale-aware numeric formatting helpers for invoice amounts, currencies, and yie
 | `formatCurrency` | Formats a numeric value with `Intl.NumberFormat` currency style. Accepts `{ currency, locale }`. |
 | `formatAmount`   | Formats a numeric amount with grouping and no currency symbol.                 |
 
-Both helpers return a safe fallback (`—`) for `null`, `undefined`, `NaN`, empty strings, and non-numeric strings. Use them when rendering invoice principal, marketplace card amounts, and numeric yield text so values remain locale-aware and screen-reader friendly without injecting unescaped HTML.
+Both helpers return a safe fallback (`—`) for `null`, `undefined`, `NaN`, empty strings, and non-numeric strings. `InvoiceCard` reuses `formatCurrency` for the amount cell and `formatAmount` for yield text before appending a single percent sign, keeping card, skeleton-aligned rows, and detail-page formatting consistent without injecting unescaped HTML.
 
 > **Note:** Wallet connection is currently mocked for UI development. Replace the `connectWallet` internals with real Freighter / wallet-kit calls when integrating. See [WALLET_INTEGRATION_CONTRACT.md](WALLET_INTEGRATION_CONTRACT.md).
 
