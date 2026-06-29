@@ -12,7 +12,11 @@ import {
   useWallet,
   writeStoredSnapshot,
 } from "./WalletProvider";
-import { isFreighterConnected, connectFreighter, getFreighterNetwork } from "../lib/wallet/freighter";
+import {
+  isFreighterConnected,
+  connectFreighter,
+  getFreighterNetwork,
+} from "../lib/wallet/freighter";
 
 jest.mock("../lib/wallet/freighter", () => ({
   isFreighterConnected: jest.fn(),
@@ -47,7 +51,7 @@ function renderWithProvider(ui = <WalletProbe />) {
 beforeEach(() => {
   jest.useFakeTimers();
   localStorage.clear();
-  process.env.NEXT_PUBLIC_STELLAR_NETWORK = 'testnet';
+  process.env.NEXT_PUBLIC_STELLAR_NETWORK = "testnet";
 });
 
 afterEach(() => {

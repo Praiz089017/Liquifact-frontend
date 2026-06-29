@@ -235,10 +235,7 @@ describe("EmptyState – InvoiceList integration scenario", () => {
       <EmptyState
         title="No invoices yet"
         action={
-          <a
-            href="#invoice-upload-btn"
-            className="focus-ring"
-          >
+          <a href="#invoice-upload-btn" className="focus-ring">
             Upload your first invoice
           </a>
         }

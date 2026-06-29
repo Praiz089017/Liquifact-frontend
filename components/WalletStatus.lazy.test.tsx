@@ -1,21 +1,21 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { axe, toHaveNoViolations } from 'jest-axe';
-import '@testing-library/jest-dom';
-import { ToastProvider } from './ToastProvider';
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { axe, toHaveNoViolations } from "jest-axe";
+import "@testing-library/jest-dom";
+import { ToastProvider } from "./ToastProvider";
 
 // WalletStatus calls useToast(), so every render needs a ToastProvider ancestor.
 function renderLazy() {
   return render(
     <ToastProvider>
       <WalletStatusLazy />
-    </ToastProvider>,
+    </ToastProvider>
   );
 }
 
 // ── Mock next/dynamic so we can control lazy-load timing in tests ──
-jest.mock('next/dynamic', () => {
-  const ReactForMock = require('react');
+jest.mock("next/dynamic", () => {
+  const ReactForMock = require("react");
 
   return function dynamicMock(importFunc: () => Promise<any>, options: any) {
     function DynamicWrapper(props: any) {
@@ -45,18 +45,18 @@ jest.mock('next/dynamic', () => {
       }
 
       return null;
-    };
+    }
 
-    DynamicWrapper.displayName = 'DynamicWrapper';
+    DynamicWrapper.displayName = "DynamicWrapper";
     const SuspenseWrapper: React.FC<any> = (props) => {
-      const inlineReact = require('react');
+      const inlineReact = require("react");
       return (
         <inlineReact.Suspense fallback={options?.loading ? <options.loading {...props} /> : null}>
           <DynamicWrapper {...props} />
         </inlineReact.Suspense>
       );
     };
-    SuspenseWrapper.displayName = 'SuspenseWrapper';
+    SuspenseWrapper.displayName = "SuspenseWrapper";
     return SuspenseWrapper;
   };
 });
@@ -65,15 +65,15 @@ jest.mock('next/dynamic', () => {
 const mockConnectWallet = jest.fn();
 const mockDisconnectWallet = jest.fn();
 
-jest.mock('./WalletProvider', () => ({
-  ...jest.requireActual('./WalletProvider'),
+jest.mock("./WalletProvider", () => ({
+  ...jest.requireActual("./WalletProvider"),
   useWallet: () => ({
-    state: 'disconnected',
+    state: "disconnected",
     walletData: null,
     error: null,
     connect: mockConnectWallet,
     disconnect: mockDisconnectWallet,
-  })
+  }),
 }));
 
 jest.mock("./ToastProvider", () => ({
@@ -95,24 +95,24 @@ describe("WalletStatusLazy", () => {
     jest.clearAllMocks();
   });
 
-  it('renders the placeholder immediately (no CLS)', () => {
+  it("renders the placeholder immediately (no CLS)", () => {
     renderLazy();
-    const placeholder = screen.getByTestId('wallet-status-placeholder');
+    const placeholder = screen.getByTestId("wallet-status-placeholder");
     expect(placeholder).toBeInTheDocument();
     expect(placeholder).toHaveAttribute("aria-hidden", "true");
   });
 
-  it('placeholder has matching dimensions to prevent layout shift', () => {
+  it("placeholder has matching dimensions to prevent layout shift", () => {
     renderLazy();
-    const placeholder = screen.getByTestId('wallet-status-placeholder');
-    expect(placeholder).toHaveClass('h-12');
-    expect(placeholder).toHaveClass('w-80');
-    expect(placeholder).toHaveClass('rounded-full');
-    expect(placeholder).toHaveClass('flex');
-    expect(placeholder).toHaveClass('items-center');
+    const placeholder = screen.getByTestId("wallet-status-placeholder");
+    expect(placeholder).toHaveClass("h-12");
+    expect(placeholder).toHaveClass("w-80");
+    expect(placeholder).toHaveClass("rounded-full");
+    expect(placeholder).toHaveClass("flex");
+    expect(placeholder).toHaveClass("items-center");
   });
 
-  it('mounts the real WalletStatus after chunk loads', async () => {
+  it("mounts the real WalletStatus after chunk loads", async () => {
     renderLazy();
 
     // Initially placeholder
@@ -130,7 +130,7 @@ describe("WalletStatusLazy", () => {
     expect(screen.getByRole("button", { name: /connect wallet/i })).toBeInTheDocument();
   });
 
-  it('accessible status region is present after mount', async () => {
+  it("accessible status region is present after mount", async () => {
     renderLazy();
 
     await waitFor(
@@ -145,13 +145,13 @@ describe("WalletStatusLazy", () => {
     expect(status).toHaveAttribute("aria-live", "polite");
   });
 
-  it('has no accessibility violations in placeholder state', async () => {
+  it("has no accessibility violations in placeholder state", async () => {
     const { container } = renderLazy();
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
 
-  it('has no accessibility violations after lazy mount', async () => {
+  it("has no accessibility violations after lazy mount", async () => {
     const { container } = renderLazy();
 
     await waitFor(
@@ -175,9 +175,9 @@ describe("WalletStatusLazy", () => {
     expect(WALLET_STATES.NO_WALLET).toBe("no_wallet");
   });
 
-  it('does not produce hydration warnings (placeholder is aria-hidden)', () => {
+  it("does not produce hydration warnings (placeholder is aria-hidden)", () => {
     renderLazy();
-    const placeholder = screen.getByTestId('wallet-status-placeholder');
-    expect(placeholder).toHaveAttribute('aria-hidden', 'true');
+    const placeholder = screen.getByTestId("wallet-status-placeholder");
+    expect(placeholder).toHaveAttribute("aria-hidden", "true");
   });
 });

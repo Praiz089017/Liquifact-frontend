@@ -146,7 +146,8 @@ const TOKEN_PAIRS: TokenPair[] = [
     fg: "--color-surface",
     bg: "--color-bg",
     threshold: 1.0,
-    context: "Card/panel surface against page background — intentionally subtle, just verifies token exists",
+    context:
+      "Card/panel surface against page background — intentionally subtle, just verifies token exists",
   },
   {
     name: "border token against page background (value guard)",

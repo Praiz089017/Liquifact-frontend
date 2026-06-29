@@ -10,7 +10,11 @@ import {
   useState,
 } from "react";
 import { ToastContext } from "./ToastProvider";
-import { isFreighterConnected, connectFreighter, getFreighterNetwork } from "../lib/wallet/freighter";
+import {
+  isFreighterConnected,
+  connectFreighter,
+  getFreighterNetwork,
+} from "../lib/wallet/freighter";
 
 /**
  * Read the toast API when available. Returns null when WalletProvider is
@@ -226,7 +230,7 @@ export function WalletProvider({ children }) {
 
       const address = await connectFreighter();
       const network = await getFreighterNetwork();
-      const expectedNetwork = process.env.NEXT_PUBLIC_STELLAR_NETWORK || 'testnet';
+      const expectedNetwork = process.env.NEXT_PUBLIC_STELLAR_NETWORK || "testnet";
 
       if (network !== expectedNetwork.toLowerCase()) {
         setState(WALLET_STATES.WRONG_NETWORK);
@@ -248,7 +252,7 @@ export function WalletProvider({ children }) {
         address,
         network,
         balance: "1,234.56 XLM",
-        walletType: "freighter"
+        walletType: "freighter",
       };
       setWalletData(data);
       toast?.success("Wallet connected successfully.", "Wallet connected");

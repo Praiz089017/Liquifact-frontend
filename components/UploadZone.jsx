@@ -7,11 +7,13 @@ import { isPdfMagicValid } from "../lib/validation/pdf";
 // Base URL for backend API; sourced from env (defaults to empty string for tests)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 const FILE_CONSTRAINTS = {
   accept: ".pdf",
   mimeType: "application/pdf",
   maxSizeMb: 10,
-  maxSizeBytes: 10 * 1024 * 1024,
+  maxSizeBytes: MAX_UPLOAD_BYTES,
 };
 
 function ConstraintBadge({ icon, label }) {
@@ -158,9 +160,8 @@ function UploadZone({ onUploadSuccess, progress }) {
       const body = new FormData();
       body.append("invoice", file);
 
-      const baseUrl = typeof API_URL !== 'undefined' && API_URL ? API_URL : '';
-      const res = await fetch(`${baseUrl}/invoices`, { method: 'POST', body });
-
+      const baseUrl = typeof API_URL !== "undefined" && API_URL ? API_URL : "";
+      const res = await fetch(`${baseUrl}/invoices`, { method: "POST", body });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

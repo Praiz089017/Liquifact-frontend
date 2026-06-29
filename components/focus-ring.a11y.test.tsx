@@ -49,9 +49,7 @@ jest.mock("./WalletStatusLazy", () => ({
 // ── Shared helpers ───────────────────────────────────────────────────────────
 
 function getFocusRingElements(container: HTMLElement): HTMLElement[] {
-  return Array.from(
-    container.querySelectorAll<HTMLElement>(".focus-ring")
-  );
+  return Array.from(container.querySelectorAll<HTMLElement>(".focus-ring"));
 }
 
 /**

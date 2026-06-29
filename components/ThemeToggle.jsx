@@ -68,12 +68,17 @@ export function applyTheme(pref) {
  * @param {string}  [props.className]  – Extra classes on the root button
  */
 export default function ThemeToggle({ className = "" }) {
-  // Initialise from localStorage only on the client (avoids SSR mismatch)
-  const [preference, setPreference] = useState("system");
-
-  useEffect(() => {
-    setPreference(readStoredTheme());
-  }, []);
+  // Initialise from localStorage only on the client (avoids SSR mismatch).
+  // Using a lazy initializer avoids calling setState synchronously inside an
+  // effect, which would trigger a cascading render warning.
+  const [preference, setPreference] = useState(() => {
+    if (typeof window === "undefined") return "system";
+    try {
+      return readStoredTheme();
+    } catch {
+      return "system";
+    }
+  });
 
   // Keep data-theme in sync whenever the preference state changes
   useEffect(() => {

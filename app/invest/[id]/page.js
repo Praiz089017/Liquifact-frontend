@@ -9,11 +9,7 @@ import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import StatusPill from "@/components/StatusPill";
 import WalletStatus from "@/components/WalletStatus";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
-import {
-  INVALID_VALUE_FALLBACK,
-  formatAmount,
-  formatCurrency,
-} from "@/lib/format/currency";
+import { INVALID_VALUE_FALLBACK, formatAmount, formatCurrency } from "@/lib/format/currency";
 import { getInvoiceById } from "../lib";
 
 const DEV_DELAY = process.env.NODE_ENV === "development" ? 800 : 0;
@@ -26,9 +22,7 @@ function loadInvoiceById(id) {
 
 function formatYield(value) {
   const formattedYield = formatAmount(value);
-  return formattedYield === INVALID_VALUE_FALLBACK
-    ? formattedYield
-    : `${formattedYield}%`;
+  return formattedYield === INVALID_VALUE_FALLBACK ? formattedYield : `${formattedYield}%`;
 }
 
 export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
@@ -145,9 +139,7 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
                 </div>
                 <div>
                   <dt className="text-slate-500">Estimated yield</dt>
-                  <dd className="text-slate-100">
-                    {formatYield(invoice.yield)}
-                  </dd>
+                  <dd className="text-slate-100">{formatYield(invoice.yield)}</dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">Maturity date</dt>

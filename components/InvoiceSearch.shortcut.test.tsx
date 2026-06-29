@@ -16,7 +16,7 @@ function renderSearch(overrides: { value?: string; placeholder?: string } = {}) 
       value={overrides.value ?? ""}
       onChange={onChange}
       placeholder={overrides.placeholder}
-    />,
+    />
   );
   return { ...result, onChange };
 }
@@ -58,10 +58,7 @@ describe("isEditableElement", () => {
 });
 
 describe("createSearchShortcutHandler", () => {
-  function fireSlash(
-    target: EventTarget = window,
-    options: Partial<KeyboardEventInit> = {},
-  ) {
+  function fireSlash(target: EventTarget = window, options: Partial<KeyboardEventInit> = {}) {
     const event = new KeyboardEvent("keydown", {
       key: SEARCH_SHORTCUT_KEY,
       bubbles: true,
@@ -133,7 +130,7 @@ describe("createSearchShortcutHandler", () => {
         key: SEARCH_SHORTCUT_KEY,
         bubbles: true,
         cancelable: true,
-      }),
+      })
     );
 
     expect(focusInput).not.toHaveBeenCalled();
@@ -155,7 +152,7 @@ describe("createSearchShortcutHandler", () => {
         key: SEARCH_SHORTCUT_KEY,
         bubbles: true,
         cancelable: true,
-      }),
+      })
     );
 
     expect(focusInput).not.toHaveBeenCalled();
@@ -177,7 +174,7 @@ describe("createSearchShortcutHandler", () => {
         bubbles: true,
         cancelable: true,
         ...modifiers,
-      }),
+      })
     );
 
     expect(focusInput).not.toHaveBeenCalled();
@@ -187,18 +184,12 @@ describe("createSearchShortcutHandler", () => {
 describe("InvoiceSearch placeholder", () => {
   it("uses the default placeholder with shortcut hint", () => {
     renderSearch();
-    expect(screen.getByRole("searchbox")).toHaveAttribute(
-      "placeholder",
-      DEFAULT_PLACEHOLDER,
-    );
+    expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", DEFAULT_PLACEHOLDER);
   });
 
   it("respects a custom placeholder prop", () => {
     renderSearch({ placeholder: "Find issuer" });
-    expect(screen.getByRole("searchbox")).toHaveAttribute(
-      "placeholder",
-      "Find issuer",
-    );
+    expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", "Find issuer");
   });
 });
 
