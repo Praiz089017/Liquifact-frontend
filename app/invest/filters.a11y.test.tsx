@@ -18,18 +18,18 @@ describe("InvestMarketplace - Coming Soon Filters A11y", () => {
 
   it("should render the filters wrapped in a fieldset with coming soon semantics", () => {
     render(<InvestMarketplace loadInvoices={mockLoadInvoices} />);
-    
+
     // Check for the fieldset acting as the accessible wrapper
     const fieldset = screen.getByRole("group", { name: /Marketplace Filters/i });
     expect(fieldset).toBeInTheDocument();
-    
+
     // Ensure aria-disabled is present and set to true
     expect(fieldset).toHaveAttribute("aria-disabled", "true");
-    
+
     // Ensure aria-describedby connects the fieldset to the Soon badge
     const descriptionId = fieldset.getAttribute("aria-describedby");
     expect(descriptionId).toBe("filters-coming-soon");
-    
+
     // Ensure the description element actually exists and has the correct text
     const descriptionElement = document.getElementById(descriptionId);
     expect(descriptionElement).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe("InvestMarketplace - Coming Soon Filters A11y", () => {
 
   it("should have no accessibility violations with the coming soon semantics applied", async () => {
     const { container } = render(<InvestMarketplace loadInvoices={mockLoadInvoices} />);
-    
+
     // Run jest-axe to ensure our 'coming soon' opacity and wrapper do not violate contrast or structural rules
     const results = await axe(container);
     expect(results).toHaveNoViolations();

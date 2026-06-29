@@ -7,11 +7,13 @@ import { isPdfMagicValid, validatePdfFile, sanitizeFilename } from "../lib/valid
 // Base URL for backend API; validated and centralized in lib/config/env.
 const API_URL = env.apiUrl;
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 const FILE_CONSTRAINTS = {
   accept: ".pdf",
   mimeType: "application/pdf",
   maxSizeMb: 10,
-  maxSizeBytes: 10 * 1024 * 1024,
+  maxSizeBytes: MAX_UPLOAD_BYTES,
 };
 
 const MAX_UPLOAD_BYTES = FILE_CONSTRAINTS.maxSizeBytes;
@@ -163,9 +165,8 @@ function UploadZone({ onUploadSuccess, progress }) {
       const body = new FormData();
       body.append("invoice", file);
 
-      const baseUrl = typeof API_URL !== 'undefined' && API_URL ? API_URL : '';
-      const res = await fetch(`${baseUrl}/invoices`, { method: 'POST', body });
-
+      const baseUrl = typeof API_URL !== "undefined" && API_URL ? API_URL : "";
+      const res = await fetch(`${baseUrl}/invoices`, { method: "POST", body });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -345,7 +346,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         disabled={!file || isProcessing}
         aria-disabled={!file || isProcessing}
         className="mt-4 w-full rounded-xl bg-cyan-500 py-3 text-sm font-semibold text-slate-950 transition-all duration-200
-          hover:bg-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400
+          hover:bg-cyan-400 focus-ring
           disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {status === "uploading" && (

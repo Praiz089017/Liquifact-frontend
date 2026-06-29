@@ -24,7 +24,7 @@ function renderWithProviders() {
       <WalletProvider>
         <TestHarness />
       </WalletProvider>
-    </ToastProvider>,
+    </ToastProvider>
   );
 }
 
@@ -50,7 +50,7 @@ describe("WalletStatus external navigation", () => {
   async function navigateToNoWalletState() {
     renderWithProviders();
     const button = screen.getByRole("button", { name: /connect wallet/i });
-    
+
     // fireEvent triggers immediately without conflicting with the fake timer queue
     fireEvent.click(button);
 
@@ -62,7 +62,7 @@ describe("WalletStatus external navigation", () => {
 
   it("opens the trusted wallet URL with noopener and noreferrer", async () => {
     await navigateToNoWalletState();
-    
+
     const installButton = screen.getByRole("button", { name: /install/i });
     fireEvent.click(installButton);
 
@@ -70,7 +70,7 @@ describe("WalletStatus external navigation", () => {
     expect(openSpy).toHaveBeenCalledWith(
       copy.wallet.installWalletUrl,
       "_blank",
-      "noopener,noreferrer",
+      "noopener,noreferrer"
     );
     expect(errorSpy).not.toHaveBeenCalled();
   });
@@ -78,7 +78,7 @@ describe("WalletStatus external navigation", () => {
   it("blocks an insecure (http) URL and logs an error", async () => {
     copy.wallet.installWalletUrl = "http://insecure-wallet-site.com";
     await navigateToNoWalletState();
-    
+
     const installButton = screen.getByRole("button", { name: /install/i });
     fireEvent.click(installButton);
 
