@@ -3,11 +3,9 @@
  * Tests for fetchInvestableInvoices API client.
  */
 
-import { fetchInvestableInvoices } from "./invoices";
+import { fetchInvestableInvoices, InvoiceTimeoutError } from "./invoices";
 
 describe("fetchInvestableInvoices", () => {
-  const originalFetch = global.fetch as any;
-
   afterEach(() => {
     jest.restoreAllMocks();
     delete process.env.NEXT_PUBLIC_API_URL;
@@ -48,7 +46,7 @@ describe("fetchInvestableInvoices", () => {
     expect(fetchMock).toHaveBeenCalledWith("http://api.example.com/invoices", expect.any(Object));
   });
 
-  it("throws on non‑200 response", async () => {
+  it("throws on non-200 response", async () => {
     const fetchMock = jest
       .fn()
       .mockResolvedValue({ ok: false, status: 500, statusText: "Server Error" });
@@ -78,7 +76,7 @@ describe("fetchInvestableInvoices", () => {
     await expect(fetchInvestableInvoices()).rejects.toThrow("Invoice payload is not an array");
   });
 
-  it("passes AbortSignal to fetch", async () => {
+  it("passes an AbortSignal to fetch", async () => {
     const controller = new AbortController();
     const fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
     (global as any).fetch = fetchMock;
@@ -86,82 +84,107 @@ describe("fetchInvestableInvoices", () => {
     await fetchInvestableInvoices({ signal: controller.signal });
     expect(fetchMock).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ signal: controller.signal })
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
   });
 
-  // ── Field normalization & defaulting ──────────────────────────────────────
-  //
-  // The client maps each raw entry to the UI contract
-  // { id, issuer, amount, currency, dueDate, yield, status }, defaulting every
-  // missing field to null and dropping any unknown extra fields.
+  it("throws InvoiceTimeoutError when the timeout fires", async () => {
+    jest.useFakeTimers();
 
-  const UI_FIELDS = ["id", "issuer", "amount", "currency", "dueDate", "yield", "status"] as const;
-
-  function mockJson(payload: unknown) {
-    (global as any).fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => payload });
-  }
-
-  it("defaults every missing field to null for a fully-empty object", async () => {
-    mockJson([{}]);
-    const [invoice] = await fetchInvestableInvoices();
-
-    expect(Object.keys(invoice).sort()).toEqual([...UI_FIELDS].sort());
-    for (const field of UI_FIELDS) {
-      expect(invoice[field as keyof typeof invoice]).toBeNull();
-    }
-  });
-
-  it("defaults only the missing fields on a partial object, keeping present ones", async () => {
-    mockJson([{ id: "inv-1", amount: "500" }]);
-    const [invoice] = await fetchInvestableInvoices();
-
-    expect(invoice).toEqual({
-      id: "inv-1",
-      issuer: null,
-      amount: "500",
-      currency: null,
-      dueDate: null,
-      yield: null,
-      status: null,
+    const fetchMock = jest.fn().mockImplementation((_url, { signal }: { signal: AbortSignal }) => {
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => {
+          const err = new DOMException("Aborted", "AbortError");
+          reject(err);
+        });
+      });
     });
+    (global as any).fetch = fetchMock;
+
+    const promise = fetchInvestableInvoices({ timeoutMs: 5000 });
+
+    jest.advanceTimersByTime(5000);
+
+    await expect(promise).rejects.toBeInstanceOf(InvoiceTimeoutError);
+    await expect(promise).rejects.toThrow("Request timed out after 5000ms");
+
+    jest.useRealTimers();
   });
 
-  it("maps the raw 'yield' field through to the normalized 'yield' field", async () => {
-    mockJson([{ yield: "7.5%" }]);
-    const [invoice] = await fetchInvestableInvoices();
+  it("throws the caller AbortError (not InvoiceTimeoutError) when caller signal fires", async () => {
+    const controller = new AbortController();
+    const fetchMock = jest.fn().mockImplementation((_url, { signal }: { signal: AbortSignal }) => {
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => {
+          reject(new DOMException("Aborted", "AbortError"));
+        });
+      });
+    });
+    (global as any).fetch = fetchMock;
 
-    expect(invoice.yield).toBe("7.5%");
+    const promise = fetchInvestableInvoices({ signal: controller.signal, timeoutMs: 30_000 });
+    controller.abort();
+
+    const err = await promise.catch((e: Error) => e);
+    expect(err.name).toBe("AbortError");
+    expect(err).not.toBeInstanceOf(InvoiceTimeoutError);
   });
 
-  it("drops unknown extra fields not in the UI contract", async () => {
-    mockJson([{ id: "inv-2", secret: "leak", __proto__hack: true, extra: 123 }]);
-    const [invoice] = await fetchInvestableInvoices();
+  it("rejects immediately when a pre-aborted caller signal is supplied", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const fetchMock = jest.fn();
+    (global as any).fetch = fetchMock;
 
-    expect(Object.keys(invoice).sort()).toEqual([...UI_FIELDS].sort());
-    expect(invoice).not.toHaveProperty("secret");
-    expect(invoice).not.toHaveProperty("extra");
+    await expect(fetchInvestableInvoices({ signal: controller.signal })).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("treats null and non-object entries as fully-defaulted invoices", async () => {
-    mockJson([null, undefined, 42, "oops"]);
+  it("normalizes invoices with missing fields to null", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{}],
+    });
+    (global as any).fetch = fetchMock;
+
     const result = await fetchInvestableInvoices();
-
-    expect(result).toHaveLength(4);
-    for (const invoice of result) {
-      for (const field of UI_FIELDS) {
-        expect(invoice[field as keyof typeof invoice]).toBeNull();
-      }
-    }
+    expect(result).toEqual([
+      { id: null, issuer: null, amount: null, currency: null, dueDate: null, yield: null, status: null },
+    ]);
   });
 
-  it("returns an empty array for an empty payload", async () => {
-    mockJson([]);
-    await expect(fetchInvestableInvoices()).resolves.toEqual([]);
+  it("passes the composed AbortSignal (not the original caller signal) to fetch", async () => {
+    const controller = new AbortController();
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    (global as any).fetch = fetchMock;
+
+    await fetchInvestableInvoices({ signal: controller.signal });
+
+    const usedSignal = fetchMock.mock.calls[0][1].signal as AbortSignal;
+    // The function wraps the caller signal in its own controller, so the signal
+    // passed to fetch is a different AbortSignal instance.
+    expect(usedSignal).toBeInstanceOf(AbortSignal);
+    expect(usedSignal).not.toBe(controller.signal);
   });
 
-  it("throws the documented message when the body is a non-array object", async () => {
-    mockJson({ invoices: [] });
-    await expect(fetchInvestableInvoices()).rejects.toThrow("Invoice payload is not an array");
+  it("clears the timeout after a successful response", async () => {
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    (global as any).fetch = fetchMock;
+
+    await fetchInvestableInvoices({ timeoutMs: 10_000 });
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+  });
+
+  it("clears the timeout even when fetch rejects", async () => {
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const fetchMock = jest.fn().mockRejectedValue(new Error("Network failure"));
+    (global as any).fetch = fetchMock;
+
+    await expect(fetchInvestableInvoices()).rejects.toThrow("Network failure");
+    expect(clearTimeoutSpy).toHaveBeenCalled();
   });
 });

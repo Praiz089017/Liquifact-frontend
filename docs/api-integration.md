@@ -290,11 +290,73 @@ The application uses two distinct components to display errors to users:
 
 ---
 
+## Request Timeout Handling
+
+`fetchInvestableInvoices` (in `lib/api/invoices.js`) protects the Invest marketplace against hung backends by aborting the request after a configurable deadline using the browser's `AbortController` API.
+
+### Default timeout
+
+The default is **10 000 ms (10 s)**. Pass `timeoutMs` to override it per call-site:
+
+```js
+import { fetchInvestableInvoices } from "@/lib/api/invoices";
+
+// Use the default 10-second timeout
+const invoices = await fetchInvestableInvoices();
+
+// Custom 5-second timeout for a latency-sensitive context
+const invoices = await fetchInvestableInvoices({ timeoutMs: 5000 });
+```
+
+### Composing with a caller signal
+
+Callers may supply their own `AbortSignal` (e.g. tied to a React `useEffect` cleanup) alongside the timeout. Both are honoured simultaneously — whichever fires first cancels the request:
+
+```js
+const controller = new AbortController();
+
+// In a React component:
+useEffect(() => {
+  fetchInvestableInvoices({ signal: controller.signal })
+    .then(setInvoices)
+    .catch(handleError);
+  return () => controller.abort(); // fires on unmount
+}, []);
+```
+
+### Distinguishing timeout from caller abort
+
+When the timeout fires the function throws an `InvoiceTimeoutError` (a named subclass of `Error`). When the caller's signal fires it re-throws the original `AbortError` so the caller can tell the two apart:
+
+```js
+import { fetchInvestableInvoices, InvoiceTimeoutError } from "@/lib/api/invoices";
+
+try {
+  const invoices = await fetchInvestableInvoices({ signal, timeoutMs: 8000 });
+} catch (err) {
+  if (err instanceof InvoiceTimeoutError) {
+    // Show retryable banner — backend did not respond in time.
+  } else if (err?.name === "AbortError") {
+    // Component unmounted or caller cancelled — suppress the error.
+  } else {
+    // Network / status / payload error — surface to the user.
+  }
+}
+```
+
+The `InvoiceTimeoutError` is retryable. The marketplace's error state already exposes a retry action and should treat this error class the same way it treats generic network failures.
+
+### No state leak on abort
+
+The internal `AbortController` is created fresh per call. The timeout handle is always cleared in a `finally` block, so no timer or listener persists after the function resolves, rejects, or is aborted.
+
+---
+
 ## Network Failure Scenarios
 
 Handling network-level and unpredictable failures is critical to maintaining a robust user experience:
 
-- **Timeout / Offline**: If a request times out or the user is offline, an `ErrorBanner` should notify the user of the network disconnection, ideally with a prompt to check their connection and reload.
+- **Timeout / Offline**: If a request times out, `fetchInvestableInvoices` throws an `InvoiceTimeoutError`. Callers should show a retryable `ErrorBanner` with a prompt to retry or check their connection. See [Request Timeout Handling](#request-timeout-handling) above.
 - **Invalid JSON**: If the backend returns malformed JSON or an unexpected HTML response (such as from a proxy error), the frontend parser will fail. These should be caught as generic parsing errors and handled as persistent page-level failures (`ErrorBanner`).
 - **Unreachable Backend**: Triggered when the server is down or `NEXT_PUBLIC_API_URL` points to an invalid host. The `Check API Health` feature will catch this gracefully, but data-fetching pages like the marketplace will need to render a fallback error state (`ErrorBanner`).
 - **Missing `NEXT_PUBLIC_API_URL`**: The app defaults to `http://localhost:3001` if this variable is unset. If the local backend is not running, it will result in an "Unreachable Backend" scenario.
@@ -318,7 +380,7 @@ These utilities clean, depth-limit, and truncate data before rendering or parsin
 
 ## Contract Version
 
-**Version:** v1.1
-**Last updated:** 2026-06-26
+**Version:** v1.2
+**Last updated:** 2026-06-29
 
 This contract reflects the mocked frontend state as of today and sets the baseline for the upcoming full backend integration.
