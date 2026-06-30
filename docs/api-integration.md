@@ -384,3 +384,7 @@ These utilities clean, depth-limit, and truncate data before rendering or parsin
 **Last updated:** 2026-06-29
 
 This contract reflects the mocked frontend state as of today and sets the baseline for the upcoming full backend integration.
+
+## Mock Data Architecture
+- All mock invoice fixtures are sourced from `app/invest/lib.js`. 
+- Please do not define duplicate mock arrays in UI components.
