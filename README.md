@@ -176,6 +176,10 @@ All interactive elements (nav links, card links, buttons) use a consistent `focu
 - `.skip-link` — positions and reveals the skip link on focus
 - `.focus-ring` — reusable `focus-visible` outline for custom interactive elements
 
+### Home page heading structure
+
+The home page uses a single `<h1>` for the hero title and `<h2>` headings for the two CTA cards only. The "API status" panel label is a `<p>`, not a heading, so it does not appear in the heading outline.
+
 ---
 
 ## CI/CD
@@ -591,6 +595,10 @@ All interactive elements (nav links, card links, buttons) use a consistent `focu
 
 - `.skip-link` — positions and reveals the skip link on focus
 - `.focus-ring` — reusable `focus-visible` outline for custom interactive elements
+
+### Home page heading structure
+
+The home page uses a single `<h1>` for the hero title and `<h2>` headings for the two CTA cards only. The "API status" panel label is a `<p>`, not a heading, so it does not appear in the heading outline.
 
 ### Reduced-motion support
 
