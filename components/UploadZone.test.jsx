@@ -3,16 +3,16 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { axe, toHaveNoViolations } from "jest-axe";
 import UploadZone, { FILE_CONSTRAINTS } from "./UploadZone";
 import { copy } from "../app/copy/en";
-import { isPdfMagicValid } from "../lib/validation/pdf";
+import { validatePdfFile } from "../lib/validation/pdf";
 
 jest.mock("../lib/validation/pdf", () => ({
-  isPdfMagicValid: jest.fn(),
+  validatePdfFile: jest.fn(),
 }));
 
 expect.extend(toHaveNoViolations);
 
-function createMockFile(name = 'invoice.pdf', type = 'application/pdf') {
-  return new File(['mock content'], name, { type });
+function createMockFile(name = "invoice.pdf", type = "application/pdf") {
+  return new File(["mock content"], name, { type });
 }
 
 function createMockTextFile(name = "test.txt") {
@@ -54,7 +54,7 @@ beforeEach(() => {
   // Inject mock endpoint environment mapping to satisfy API validation layout assertions
   process.env = {
     ...ORIGINAL_ENV,
-    NEXT_PUBLIC_API_URL: 'https://api.mock-liquifact.org',
+    NEXT_PUBLIC_API_URL: "https://api.mock-liquifact.org",
   };
 });
 
@@ -65,6 +65,11 @@ afterEach(() => {
 });
 
 describe("UploadZone", () => {
+  beforeEach(() => {
+    // Default mock for successful PDF validation
+    validatePdfFile.mockResolvedValue({ valid: true });
+  });
+
   it("renders constraint notice and drop zone in idle state", () => {
     render(<UploadZone />);
 
@@ -106,13 +111,58 @@ describe("UploadZone", () => {
     expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
   });
   it("rejects file with correct MIME but invalid PDF magic bytes", async () => {
-    // Mock the magic validation to return false
-    isPdfMagicValid.mockResolvedValueOnce(false);
+    // Mock the validation to return invalid
+    validatePdfFile.mockResolvedValueOnce({ valid: false, reason: "File content does not match PDF format" });
     render(<UploadZone />);
     const file = createMockFile("fake.pdf", "application/pdf");
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/valid pdf/i));
+  });
+
+  it("rejects zero-byte files", async () => {
+    render(<UploadZone />);
+    const emptyFile = new File([], "empty.pdf", { type: "application/pdf" });
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [emptyFile] } });
+    expect(screen.getByRole("alert")).toHaveTextContent(/empty/i);
+    expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
+  });
+
+  it("rejects files with non-PDF extension", async () => {
+    validatePdfFile.mockResolvedValueOnce({ valid: false, reason: "File extension does not match .pdf" });
+    render(<UploadZone />);
+    const file = createMockFile("document.txt", "application/pdf");
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [file] } });
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/extension/i));
+  });
+
+  it("sanitizes filenames with HTML special characters", async () => {
+    validatePdfFile.mockResolvedValueOnce({ valid: true });
+    render(<UploadZone />);
+    const maliciousFile = new File(['%PDF-1.4'], '<script>alert("xss")</script>.pdf', { type: "application/pdf" });
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [maliciousFile] } });
+    await waitFor(() => {
+      const filenameElement = screen.getByText(/&lt;script&gt;/);
+      expect(filenameElement).toBeInTheDocument();
+      expect(filenameElement.innerHTML).not.toContain('<script>');
+    });
+  });
+
+  it("truncates long filenames in display", async () => {
+    validatePdfFile.mockResolvedValueOnce({ valid: true });
+    render(<UploadZone />);
+    const longName = 'a'.repeat(100) + '.pdf';
+    const longFile = new File(['%PDF-1.4'], longName, { type: "application/pdf" });
+    const input = screen.getByLabelText(/select pdf invoice file/i);
+    fireEvent.change(input, { target: { files: [longFile] } });
+    await waitFor(() => {
+      const displayedText = screen.getByText(/\.\.\.$/);
+      expect(displayedText).toBeInTheDocument();
+      expect(displayedText.textContent.length).toBeLessThanOrEqual(50);
+    });
   });
 
   it("progresses through uploading, tokenizing, and success on submit", async () => {
@@ -128,7 +178,7 @@ describe("UploadZone", () => {
     });
     fireEvent.click(submitBtn);
 
-    expect(screen.getByRole('status')).toHaveTextContent(/uploading invoice/i);
+    expect(screen.getByRole("status")).toHaveTextContent(/uploading invoice/i);
     expect(submitBtn).toBeDisabled();
 
     await waitFor(() =>
@@ -160,7 +210,7 @@ describe("UploadZone", () => {
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
-  it('shows tokenizing status between upload and success when server returns tokenizationDelay', async () => {
+  it("shows tokenizing status between upload and success when server returns tokenizationDelay", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: jest.fn().mockResolvedValue({ tokenizationDelay: 1000 }),
@@ -174,7 +224,7 @@ describe("UploadZone", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
-    expect(screen.getByRole('status')).toHaveTextContent(/uploading invoice/i);
+    expect(screen.getByRole("status")).toHaveTextContent(/uploading invoice/i);
 
     await act(async () => {
       await Promise.resolve();
@@ -212,7 +262,7 @@ describe("UploadZone", () => {
     );
   });
 
-  it('prevents double-submission during processing', async () => {
+  it("prevents double-submission during processing", async () => {
     global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
     render(<UploadZone />);
 
@@ -337,15 +387,15 @@ describe("UploadZone", () => {
 
       const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
 
-      expect(dropZone).toHaveClass('border-slate-700', 'bg-slate-900/40');
+      expect(dropZone).toHaveClass("border-slate-700", "bg-slate-900/40");
 
       fireEvent.dragOver(dropZone);
 
-      expect(dropZone).toHaveClass('border-cyan-400', 'bg-cyan-500/10');
+      expect(dropZone).toHaveClass("border-cyan-400", "bg-cyan-500/10");
 
       fireEvent.dragLeave(dropZone);
 
-      expect(dropZone).toHaveClass('border-slate-700', 'bg-slate-900/40');
+      expect(dropZone).toHaveClass("border-slate-700", "bg-slate-900/40");
     });
 
     it("accepts valid PDF file on drop", () => {
@@ -357,11 +407,9 @@ describe("UploadZone", () => {
 
       fireEvent.drop(dropZone, { dataTransfer });
 
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-      expect(screen.getByText('invoice.pdf')).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: /upload & tokenize invoice/i })
-      ).toBeEnabled();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByText("invoice.pdf")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeEnabled();
     });
 
     it('rejects invalid file type on drop with role="alert" error', () => {
@@ -373,31 +421,27 @@ describe("UploadZone", () => {
 
       fireEvent.drop(dropZone, { dataTransfer });
 
-      const alert = screen.getByRole('alert');
+      const alert = screen.getByRole("alert");
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent(/invalid file type/i);
-      expect(screen.queryByText('document.txt')).not.toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: /upload & tokenize invoice/i })
-      ).toBeDisabled();
+      expect(screen.queryByText("document.txt")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
     });
 
     it('rejects oversized file on drop with role="alert" error', () => {
       render(<UploadZone />);
 
-      const dropZone = screen.getByRole('button', { name: /drop pdf invoice/i });
+      const dropZone = screen.getByRole("button", { name: /drop pdf invoice/i });
       const file = createMockLargeFile(11);
       const dataTransfer = createDataTransfer([file]);
 
       fireEvent.drop(dropZone, { dataTransfer });
 
-      const alert = screen.getByRole('alert');
+      const alert = screen.getByRole("alert");
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent(/exceeds/i);
-      expect(screen.queryByText('large.pdf')).not.toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: /upload & tokenize invoice/i })
-      ).toBeDisabled();
+      expect(screen.queryByText("large.pdf")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
     });
 
     it("clears drag-over state after drop", () => {
@@ -412,7 +456,7 @@ describe("UploadZone", () => {
 
       fireEvent.drop(dropZone, { dataTransfer });
 
-      expect(dropZone).not.toHaveClass('border-cyan-400', 'bg-cyan-500/10');
+      expect(dropZone).not.toHaveClass("border-cyan-400", "bg-cyan-500/10");
     });
   });
 
@@ -460,8 +504,8 @@ describe("UploadZone", () => {
     });
   });
 
-  describe('GROUP 3: Submit state machine / double-submit guard (existing tests validated)', () => {
-    it('disables submit button during uploading state', async () => {
+  describe("GROUP 3: Submit state machine / double-submit guard (existing tests validated)", () => {
+    it("disables submit button during uploading state", async () => {
       global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
       render(<UploadZone />);
 
@@ -495,7 +539,7 @@ describe("UploadZone", () => {
 
       fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
-      const statusUploading = screen.getByRole('status');
+      const statusUploading = screen.getByRole("status");
       expect(statusUploading).toHaveTextContent(copy.uploadZone.statusUploading);
 
       await waitFor(() =>
@@ -532,9 +576,9 @@ describe("UploadZone", () => {
     });
   });
 
-  describe('GROUP 4: Accessibility', () => {
+  describe("GROUP 4: Accessibility", () => {
     // Extended timeout thresholds to isolate sequential execution threads
-    it('passes axe accessibility check in idle state', async () => {
+    it("passes axe accessibility check in idle state", async () => {
       const { container } = render(<UploadZone />);
       jest.useRealTimers();
       const results = await axe(container);

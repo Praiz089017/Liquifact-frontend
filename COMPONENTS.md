@@ -14,6 +14,7 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [InvoiceListSkeleton](#invoicelistskeleton)
 - [InvoiceSearch](#invoicesearch)
 - [NavMenu](#navmenu)
+- [StatusLegendFilter](#statuslegendfilter)
 - [StatusPill](#statuspill)
 - [ThemeToggle](#themetoggle)
 - [ToastProvider / useToast](#toastprovider--usetoast)
@@ -453,7 +454,7 @@ Locale-aware numeric formatting helpers for invoice amounts, currencies, and yie
 | `formatCurrency` | Formats a numeric value with `Intl.NumberFormat` currency style. Accepts `{ currency, locale }`. |
 | `formatAmount`   | Formats a numeric amount with grouping and no currency symbol.                 |
 
-Both helpers return a safe fallback (`—`) for `null`, `undefined`, `NaN`, empty strings, and non-numeric strings. Use them when rendering invoice principal, marketplace card amounts, and numeric yield text so values remain locale-aware and screen-reader friendly without injecting unescaped HTML.
+Both helpers return a safe fallback (`—`) for `null`, `undefined`, `NaN`, empty strings, and non-numeric strings. `InvoiceCard` reuses `formatCurrency` for the amount cell and `formatAmount` for yield text before appending a single percent sign, keeping card, skeleton-aligned rows, and detail-page formatting consistent without injecting unescaped HTML.
 
 > **Note:** Wallet connection is currently mocked for UI development. Replace the `connectWallet` internals with real Freighter / wallet-kit calls when integrating. See [WALLET_INTEGRATION_CONTRACT.md](WALLET_INTEGRATION_CONTRACT.md).
 
@@ -552,6 +553,64 @@ import StatusPill from '@/components/StatusPill';
 // Neutral fallback (null, undefined, unknown strings, etc.)
 <StatusPill status={null} />             // → "Unknown" pill
 <StatusPill status="legacy-available" /> // → "Unknown" pill
+```
+
+---
+
+## StatusLegendFilter
+
+A compact, toggleable chip row that lets investors filter the Invest marketplace by one or more invoice statuses. The chip set is derived from `INVOICE_STATUSES` in `lib/types/invoice.js` so it never drifts from the canonical status vocabulary and `STATUS_PILL_MAP` tones.
+
+**File:** `components/InvoiceFilters.jsx` (named export `StatusLegendFilter`)
+
+### Props
+
+| Prop               | Type       | Default | Description                                                                                     |
+| ------------------ | ---------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `selectedStatuses` | `string[]` | `[]`    | Currently active status values. Must be values from `INVOICE_STATUSES`.                         |
+| `onStatusToggle`   | `Function` | —       | **Required.** Called with the status string that was clicked (add if absent, remove if present). |
+| `onClearStatuses`  | `Function` | —       | Called when the "Clear" button is clicked. Shown only when at least one status is selected.     |
+
+### Behaviour
+
+- Each chip is a `<button>` with `aria-pressed` — toggling is keyboard-operable and screen-reader-friendly.
+- Multiple selections use a union (OR) — all invoices whose status matches any selected chip are shown.
+- When `selectedStatuses` is empty all invoices are visible (no filtering applied).
+- An unknown status chip value falls back to the neutral `Unknown` pill tone from `STATUS_PILL_MAP`.
+
+### Accessibility
+
+- Chip group is wrapped with `role="group"` and `aria-label="Filter by status"`.
+- Every chip exposes `aria-pressed` (`"true"` / `"false"`).
+- The Clear button carries `aria-label="Clear status filters"`.
+- Selected chip styling reuses the `STATUS_PILL_MAP` tone classes so colour is always paired with a visible text label (WCAG 2.1 §1.4.1 satisfied).
+- All interactive elements have a visible `focus-visible:ring` outline.
+
+### Integration in `app/invest/page.js`
+
+The component is rendered above the filter fieldset. Status filtering is applied in the `filteredInvoices` useMemo. The `DEFAULT_FILTERS` object includes a `statuses: []` field.
+
+```jsx
+import { StatusLegendFilter } from '@/components/InvoiceFilters';
+
+<StatusLegendFilter
+  selectedStatuses={filters.statuses}
+  onStatusToggle={handleStatusToggle}
+  onClearStatuses={handleClearStatuses}
+/>
+```
+
+### Example
+
+```jsx
+// No selection — shows all invoices
+<StatusLegendFilter selectedStatuses={[]} onStatusToggle={toggle} onClearStatuses={clear} />
+
+// Single status selected
+<StatusLegendFilter selectedStatuses={['Open']} onStatusToggle={toggle} onClearStatuses={clear} />
+
+// Multi-status union (Open OR Overdue)
+<StatusLegendFilter selectedStatuses={['Open', 'Overdue']} onStatusToggle={toggle} onClearStatuses={clear} />
 ```
 
 ---
@@ -713,3 +772,36 @@ Global tokens defined in `app/globals.css` and driven by the `[data-theme]` attr
 Dark is the `:root` default (backwards-compatible). Light overrides activate via `[data-theme="light"]`.
 
 Font: **Geist** via `next/font/google`. Headings use `font-bold`; body copy uses the default weight.
+
+---
+
+## Print behavior — Invoice Detail page
+
+**File:** `app/invest/[id]/page.js`
+
+The invoice detail page (`/invest/[id]`) supports printing and PDF export via a `@media print` block in `app/globals.css`.
+
+### How it works
+
+- A **"Print / Save PDF"** button appears below the Fund button on the detail page. Clicking it calls `window.print()`, which triggers the browser's native print/save-as-PDF dialog.
+- The button has `aria-label="Print or save this invoice as PDF"` and is keyboard-reachable.
+- Interactive chrome (nav header, wallet widget, back link, Fund button, disclaimer note, and the print button itself) all carry the `no-print` CSS class, which the print stylesheet hides with `display: none !important`.
+- The invoice summary `<section>` carries the `print-invoice-section` class, which forces a white background and dark text for ink-efficient output.
+
+### CSS classes
+
+| Class                   | Purpose                                                    |
+| ----------------------- | ---------------------------------------------------------- |
+| `no-print`              | Hides element in `@media print` (nav, buttons, disclaimer) |
+| `print-invoice-section` | Forces white bg and dark text on the invoice facts panel   |
+| `print-page-wrapper`    | Resets page-level dark background to white when printing   |
+
+### Printed fields
+
+The printed / PDF output shows only the invoice's core fields:
+
+- Issuer
+- Amount (with currency)
+- Estimated yield
+- Maturity date
+- Status

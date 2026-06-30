@@ -1,10 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Button from "./Button";
 import { useToast } from "./ToastProvider";
 import { copy } from "../app/copy/en";
 import { useWallet, WALLET_STATES } from "./WalletProvider";
+
+/**
+ * Returns a concise, non-sensitive announcement string for a wallet state
+ * transition. Returns null when no announcement is warranted (e.g. connecting
+ * state, which has its own visible spinner).
+ * @param {string} nextState
+ * @returns {string|null}
+ */
+function getTransitionAnnouncement(nextState) {
+  switch (nextState) {
+    case WALLET_STATES.CONNECTED:
+      return "Wallet connected.";
+    case WALLET_STATES.DISCONNECTED:
+      return "Wallet disconnected.";
+    case WALLET_STATES.ERROR:
+      return "Wallet connection failed.";
+    case WALLET_STATES.WRONG_NETWORK:
+      return "Wallet connected to wrong network.";
+    case WALLET_STATES.NO_WALLET:
+      return "No wallet detected.";
+    default:
+      return null;
+  }
+}
 
 // Wallet connection states
 // This is now imported from WalletProvider, but kept here for export stability
@@ -192,7 +216,7 @@ export default function WalletStatus() {
         return {
           buttonText: copy.wallet.switchNetworkButton,
           buttonVariant: "warning",
-          helperText: copy.wallet.helperWrongNetwork,
+          helperText: error || copy.wallet.helperWrongNetwork,
           disabled: false,
           showAddress: false,
         };
@@ -212,6 +236,26 @@ export default function WalletStatus() {
   };
 
   const config = getStateConfig(rawState);
+
+  // Track state transitions to announce them once via the polite live region.
+  const prevStateRef = useRef(rawState);
+  const [liveAnnouncement, setLiveAnnouncement] = useState("");
+
+  useEffect(() => {
+    const prev = prevStateRef.current;
+    if (prev !== rawState) {
+      prevStateRef.current = rawState;
+      const msg = getTransitionAnnouncement(rawState);
+      if (msg) {
+        // Briefly clear then set so the same message re-announces if the
+        // user toggles connect/disconnect repeatedly.
+        setLiveAnnouncement("");
+        // Use a microtask-level delay so the DOM registers the empty string
+        // before the new message, ensuring screen readers re-read it.
+        Promise.resolve().then(() => setLiveAnnouncement(msg));
+      }
+    }
+  }, [rawState]);
 
   // const buttonText = getButtonText();
   // const helperText = getHelperText();

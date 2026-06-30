@@ -38,6 +38,15 @@ Part of the LiquiFact stack: **frontend** (this repo) | **backend** (Express API
 
 ---
 
+## Architecture
+
+New to the codebase? Start with the
+[Frontend Architecture & Data Flow guide](docs/architecture.md) — it maps the
+App Router routes (and their loading/error files), the mock-vs-live data layers,
+and where wallet/toast/theme state lives.
+
+---
+
 ## API Integration
 
 For frontend/backend contract details see:
@@ -59,20 +68,33 @@ docs/api-integration.md
 
 ### Environment variables
 
-| Variable                      | Required | Default                 | Used by                                                          |
-| ----------------------------- | -------- | ----------------------- | ---------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL`         | No       | `http://localhost:3001` | [app/page.js](app/page.js)                                       |
-| `NEXT_PUBLIC_STELLAR_NETWORK` | No       | Unset                   | [WALLET_INTEGRATION_CONTRACT.md](WALLET_INTEGRATION_CONTRACT.md) |
+For the full reference — purpose, defaults, required-vs-optional, and consuming module for every variable — see **[docs/configuration.md](docs/configuration.md)**.
+
+Quick summary:
+
+| Variable | Required | Default | Used by |
+|---|---|---|---|
+| `NEXT_PUBLIC_API_URL` | No | `http://localhost:3001` | `lib/api/invoices.js`, `app/page.js` |
+| `NEXT_PUBLIC_SITE_URL` | No | `http://localhost:3000` | `app/layout.js`, `app/sitemap.js`, `app/robots.js` |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | No | *(unset)* | `lib/wallet/freighter.js` |
 
 `NEXT_PUBLIC_*` values are inlined by Next.js at **build time** and shipped to the browser. **Never store secrets here.**
 
 #### Build-time validation
 
-All `NEXT_PUBLIC_*` variables are validated by [`lib/config/env.js`](lib/config/env.js) when the module is first imported. If any variable is set to an invalid value (e.g. a malformed URL or an unsupported `STELLAR_NETWORK` value), the build fails immediately with a message listing every problem:
+All `NEXT_PUBLIC_*` variables are validated by [`lib/config/env.js`](lib/config/env.js) when the module is first imported, and the resulting config object is **frozen** so it cannot be mutated at runtime. Consumers (`app/page.js`, `lib/api/invoices.js`, `components/UploadZone.jsx`, `components/WalletProvider.jsx`) read the validated value instead of `process.env` directly.
+
+Validation rules:
+
+- **`NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_SITE_URL`** — must parse via `new URL(...)` **and** use an `http:` or `https:` scheme. Disallowed schemes (`javascript:`, `data:`, `file:`, `ftp:`, …) are rejected so a hostile value can never flow into a `fetch()` URL or CSP origin.
+- **`NEXT_PUBLIC_STELLAR_NETWORK`** — optional; when set it must be one of `testnet` or `public`. An empty string is treated as unset.
+
+If any variable is invalid, the build fails immediately with a message listing every problem:
 
 ```
 [env] Environment misconfiguration — fix before deploying:
   • NEXT_PUBLIC_API_URL: "not-a-url" is not a valid URL
+  • NEXT_PUBLIC_API_URL: "javascript:alert(1)" uses a disallowed scheme "javascript:" — only http/https are permitted
   • NEXT_PUBLIC_STELLAR_NETWORK: "mainnet" must be one of [testnet, public]
 ```
 
@@ -87,6 +109,25 @@ The Invest page (`app/invest/page.js`) includes an issuer search field above the
 ### Error recovery
 
 If the marketplace fails to load invoices, an `ErrorBanner` is rendered with a **"Try again"** action. Clicking it resets the component to the loading skeleton, cancels any stale in-flight request via `AbortController`, and re-invokes `loadInvoices`. The polite `aria-live` status region is cleared on retry and re-announced once the new load settles.
+
+### File Upload Security
+
+The invoice upload system (`components/UploadZone.jsx`) implements comprehensive security validation for PDF files:
+
+- **Magic byte validation**: Verifies files start with `%PDF-` magic bytes to prevent MIME type spoofing
+- **Zero-byte rejection**: Blocks empty files (0 bytes) to prevent processing invalid files
+- **Extension validation**: Ensures file extension matches `.pdf` (case-insensitive)
+- **Content-extension mismatch detection**: Rejects files where the extension doesn't match the actual content
+- **Filename sanitization**: Escapes HTML special characters in filenames to prevent XSS attacks
+- **Filename length capping**: Truncates displayed filenames to 50 characters to prevent layout abuse
+
+All validation is performed client-side using the `lib/validation/pdf.js` helper functions:
+
+- `isPdfMagicValid(file)` - Checks PDF magic bytes
+- `validatePdfFile(file)` - Comprehensive validation including size, extension, and content
+- `sanitizeFilename(filename, maxLength)` - Sanitizes and truncates filenames for safe display
+
+The validation never executes or trusts file content - it only inspects the file's bytes and metadata.
 
 ---
 
@@ -109,7 +150,11 @@ liquifact-frontend/
 │           └── not-found.js # Unknown invoice fallback
 ├── components/
 │   ├── WalletStatus.jsx    # Wallet connection UI
-│   └── WalletProvider.jsx  # Single source of truth for shared wallet state
+│   ├── WalletProvider.jsx  # Single source of truth for shared wallet state
+│   └── UploadZone.jsx      # Invoice upload with security validation
+├── lib/
+│   └── validation/
+│       └── pdf.js          # PDF validation helpers (magic bytes, sanitization)
 ├── public/
 ├── .env.local.example
 ├── eslint.config.mjs

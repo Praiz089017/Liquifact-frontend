@@ -9,11 +9,7 @@ import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import StatusPill from "@/components/StatusPill";
 import WalletStatus from "@/components/WalletStatus";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
-import {
-  INVALID_VALUE_FALLBACK,
-  formatAmount,
-  formatCurrency,
-} from "@/lib/format/currency";
+import { INVALID_VALUE_FALLBACK, formatAmount, formatCurrency } from "@/lib/format/currency";
 import { getInvoiceById } from "../lib";
 
 const DEV_DELAY = process.env.NODE_ENV === "development" ? 800 : 0;
@@ -26,9 +22,55 @@ function loadInvoiceById(id) {
 
 function formatYield(value) {
   const formattedYield = formatAmount(value);
-  return formattedYield === INVALID_VALUE_FALLBACK
-    ? formattedYield
-    : `${formattedYield}%`;
+  return formattedYield === INVALID_VALUE_FALLBACK ? formattedYield : `${formattedYield}%`;
+}
+
+function sanitizeText(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  const text = String(value).trim();
+
+  return text.replace(/[<>{}"']/g, "");
+}
+
+function buildInvoiceJsonLd(invoice) {
+  if (!invoice) {
+    return null;
+  }
+
+  const issuer = sanitizeText(invoice.issuer);
+  const amount = sanitizeText(invoice.amount);
+  const currency = sanitizeText(invoice.currency);
+  const dueDate = sanitizeText(invoice.dueDate);
+  const yieldValue = sanitizeText(invoice.yield);
+  const status = sanitizeText(invoice.status);
+  const descriptionParts = [
+    issuer ? `Invoice offering from ${issuer}` : "Invoice offering",
+    amount ? `Amount ${amount}` : null,
+    currency ? `Currency ${currency}` : null,
+    dueDate ? `Maturity ${dueDate}` : null,
+    yieldValue ? `Estimated yield ${yieldValue}` : null,
+    status ? `Status ${status}` : null,
+  ].filter(Boolean);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Offer",
+    name: issuer ? `Invoice offering from ${issuer}` : "Invoice offering",
+    description: descriptionParts.join(". "),
+    seller: issuer
+      ? {
+          "@type": "Organization",
+          name: issuer,
+        }
+      : undefined,
+    price: amount || undefined,
+    priceCurrency: currency || undefined,
+    availability: status === "Open" ? "https://schema.org/InStock" : undefined,
+    validFrom: dueDate || undefined,
+  };
 }
 
 export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
@@ -87,10 +129,15 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
 
   const isFundingDisabled =
     walletState === WALLET_STATES.CONNECTING || walletState === WALLET_STATES.NO_WALLET;
+  const invoiceJsonLd = buildInvoiceJsonLd(invoice);
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-950 text-slate-100 print-page-wrapper">
+      <header className="no-print border-b border-slate-800 px-6 py-4 flex items-center justify-between">
         <Link
           href="/"
           className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
@@ -101,9 +148,15 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-12">
+        {invoiceJsonLd ? (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(invoiceJsonLd) }}
+          />
+        ) : null}
         <Link
           href="/invest"
-          className="inline-block mb-6 text-sm text-slate-400 hover:text-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
+          className="no-print inline-block mb-6 text-sm text-slate-400 hover:text-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
           aria-label="Back to marketplace"
         >
           ← Back to marketplace
@@ -125,7 +178,7 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
           <>
             <section
               aria-labelledby="invoice-summary-heading"
-              className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 mb-6"
+              className="print-invoice-section rounded-xl border border-slate-800 bg-slate-900/50 p-6 mb-6"
             >
               <h2 id="invoice-summary-heading" className="text-xl font-semibold mb-4">
                 {invoice.issuer}
@@ -145,9 +198,7 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
                 </div>
                 <div>
                   <dt className="text-slate-500">Estimated yield</dt>
-                  <dd className="text-slate-100">
-                    {formatYield(invoice.yield)}
-                  </dd>
+                  <dd className="text-slate-100">{formatYield(invoice.yield)}</dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">Maturity date</dt>
@@ -162,17 +213,28 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
               </dl>
             </section>
 
-            <button
-              type="button"
-              onClick={handleFund}
-              disabled={isFundingDisabled}
-              className="rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Fund this invoice"
-            >
-              Fund this invoice
-            </button>
+            <div className="no-print flex gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={handleFund}
+                disabled={isFundingDisabled}
+                className="rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Fund this invoice"
+              >
+                Fund this invoice
+              </button>
 
-            <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-300">
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500"
+                aria-label="Print or save this invoice as PDF"
+              >
+                Print / Save PDF
+              </button>
+            </div>
+
+            <div className="no-print mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-300">
               Note: Yield references are educational only and reflect on-chain basis-point
               assumptions. Invoice contracts settle at maturity. Funding commits principal and is
               subject to wallet approval.
