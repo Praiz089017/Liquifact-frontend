@@ -11,6 +11,7 @@ import InvoiceFilters, { DEFAULT_FILTERS } from "@/components/InvoiceFilters";
 import Pagination from "@/components/Pagination";
 import { copy } from "../copy/en";
 import { fetchInvestableInvoices } from "../../lib/api/invoices";
+import NavMenu from "@/components/NavMenu";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -276,14 +277,16 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 px-6 py-4">
+      {/* <header className="border-b border-slate-800 px-6 py-4">
         <Link
           href="/"
           className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
         >
           ← LiquiFact
         </Link>
-      </header>
+      </header> */}
+      <NavMenu />
+      
 
       <main className="max-w-4xl mx-auto px-6 py-12">
         {/* Polite live region – announced to screen readers on every state change */}

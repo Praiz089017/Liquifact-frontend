@@ -43,6 +43,7 @@ export default function NavMenu() {
 
   const [openPathname, setOpenPathname] = useState(null);
   const open = openPathname !== null && openPathname === pathname;
+  const isHomePage = pathname === "/" || pathname === "/home";
 
   // Drive the CSS enter/exit transition.
   // Both branches use async callbacks so setState is never called
@@ -118,11 +119,17 @@ export default function NavMenu() {
     <header className="relative sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-sm px-6 py-4">
       <div className="flex items-center justify-between">
         {/* Brand */}
-        <Link
+        {/* <Link
           href="/"
           className="md:text-2xl text-xl font-semibold tracking-tight text-slate-100 hover:text-cyan-400 active:text-cyan-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"
         >
           LiquiFact
+        </Link> */}
+          <Link
+          href="/"
+          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
+        >
+          {isHomePage ? "LiquiFact" : "← LiquiFact"}
         </Link>
 
         {/* Desktop nav */}
@@ -132,7 +139,7 @@ export default function NavMenu() {
               key={href}
               href={href}
               aria-current={pathname === href ? "page" : undefined}
-              className={`text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded ${
+              className={`text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded ${
                 pathname === href
                   ? "text-cyan-400"
                   : "text-slate-300 hover:text-cyan-400 active:text-cyan-300"

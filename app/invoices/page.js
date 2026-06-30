@@ -14,7 +14,8 @@ export default function InvoicesPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
-      <Header activePath="/invoices" />
+      {/* <Header activePath="/invoices" /> */}
+      <NavMenu />
 
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="space-y-2 mb-10">
