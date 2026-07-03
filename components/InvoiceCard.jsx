@@ -39,7 +39,8 @@ function formatDate(dateStr) {
  */
 function formatAmount(amount, currency) {
   if (amount == null) return "—";
-  const formatted = Number(amount).toLocaleString("en-US", {
+  const normalized = typeof amount === "string" ? amount.replace(/,/g, "") : amount;
+  const formatted = Number(normalized).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -106,7 +107,7 @@ export default function InvoiceCard({ invoice }) {
 
         {/* Yield — w-1/6 */}
         <div className="basis-1/6 text-right">
-          <p className="font-mono text-cyan-400">{yieldPct != null ? `${yieldPct}%` : "—"}</p>
+          <p className="font-mono text-cyan-400">{formatYield(yieldPct)}</p>
           <p className="text-xs text-slate-500 mt-0.5">Yield</p>
         </div>
 
