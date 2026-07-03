@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import InvoiceSearch from "@/components/InvoiceSearch";
-import InvoiceFilters, { DEFAULT_FILTERS } from "@/components/InvoiceFilters";
+import InvoiceFilters, { DEFAULT_FILTERS, StatusLegendFilter } from "@/components/InvoiceFilters";
 import Pagination from "@/components/Pagination";
 import { copy } from "../copy/en";
 import { fetchInvestableInvoices } from "../../lib/api/invoices";
@@ -118,7 +118,7 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
+
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
@@ -152,8 +152,23 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   const reload = useCallback(() => {
     setInvoices(null);
     setLoadError("");
-    setStatusMessage("");
     setRetryKey((k) => k + 1);
+  }, []);
+
+  /** Toggle a status chip: add if absent, remove if present. */
+  const handleStatusToggle = useCallback((status) => {
+    setFilters((prev) => {
+      const current = Array.isArray(prev.statuses) ? prev.statuses : [];
+      const next = current.includes(status)
+        ? current.filter((s) => s !== status)
+        : [...current, status];
+      return { ...prev, statuses: next };
+    });
+  }, []);
+
+  /** Clear all status chips. */
+  const handleClearStatuses = useCallback(() => {
+    setFilters((prev) => ({ ...prev, statuses: [] }));
   }, []);
 
   // Debounced search term
@@ -188,6 +203,9 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
     }
     if (filters.maturityTo) {
       list = list.filter((inv) => inv.dueDate <= filters.maturityTo);
+    }
+    if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
+      list = list.filter((inv) => filters.statuses.includes(inv.status));
     }
     return applySortToList(list, filters);
   }, [invoices, debouncedSearch, filters]);
@@ -224,7 +242,6 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
 
         setInvoices(null);
         setLoadError(copy.invest.errorDescription);
-        setStatusMessage(copy.invest.errorStatus);
       }
     };
 
@@ -237,25 +254,25 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
     // retryKey triggers a fresh load on retry without changing loadInvoices.
   }, [loadInvoices, retryKey]);
 
-  // Update the live-region status whenever the filtered list or visible count changes.
-  useEffect(() => {
-    if (!Array.isArray(invoices)) return;
+  // Derive the live-region status from current state rather than calling setState
+  // inside an effect, which avoids triggering cascading renders.
+  const statusMessage = useMemo(() => {
+    if (loadError) return copy.invest.errorStatus;
+    if (!Array.isArray(invoices)) return "";
     if (filterActive) {
-      setStatusMessage(
-        getInvoiceLoadAnnouncement(invoices, {
-          filterActive: true,
-          filteredCount: filteredInvoices.length,
-        })
-      );
-    } else if (visibleCount < filteredInvoices.length) {
-      setStatusMessage(getPaginationAnnouncement(visibleCount, filteredInvoices.length));
-    } else if (visibleCount > PAGE_SIZE) {
-      // After Load more brings us to the last page, announce pagination format
-      setStatusMessage(getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length));
-    } else {
-      setStatusMessage(getInvoiceLoadAnnouncement(invoices));
+      return getInvoiceLoadAnnouncement(invoices, {
+        filterActive: true,
+        filteredCount: filteredInvoices.length,
+      });
     }
-  }, [filteredInvoices, filterActive, invoices, visibleCount]);
+    if (visibleCount < filteredInvoices.length) {
+      return getPaginationAnnouncement(visibleCount, filteredInvoices.length);
+    }
+    if (visibleCount > PAGE_SIZE) {
+      return getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length);
+    }
+    return getInvoiceLoadAnnouncement(invoices);
+  }, [filteredInvoices, filterActive, invoices, loadError, visibleCount]);
 
   // ── Load-more handler ──────────────────────────────────────────────────────
   /**
@@ -315,6 +332,13 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
             aria-label="Search by issuer name"
           />
         </div>
+
+        {/* Status legend filter chip row */}
+        <StatusLegendFilter
+          selectedStatuses={Array.isArray(filters.statuses) ? filters.statuses : []}
+          onStatusToggle={handleStatusToggle}
+          onClearStatuses={handleClearStatuses}
+        />
 
         <fieldset
           className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6"

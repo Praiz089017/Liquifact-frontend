@@ -10,12 +10,7 @@ import {
   getResultsSummaryText,
   hasAnyActiveFilters,
 } from "@/components/InvoiceFilters";
-import {
-  filterInvoices,
-  InvestMarketplace,
-  PAGE_SIZE,
-  SEARCH_DEBOUNCE_MS,
-} from "./page";
+import { filterInvoices, InvestMarketplace, PAGE_SIZE, SEARCH_DEBOUNCE_MS } from "./page";
 
 jest.mock("next/link", () => {
   function MockLink({ href, children, ...props }) {
@@ -34,7 +29,7 @@ function createDeferredLoader(invoices, delayMs = 0) {
     () =>
       new Promise((resolve) => {
         setTimeout(() => resolve(invoices), delayMs);
-      }),
+      })
   );
 }
 
@@ -59,7 +54,7 @@ function makeInvoices(count) {
 
 function getInvoiceListItems() {
   return within(screen.getByRole("list", { name: /investable invoices/i })).getAllByRole(
-    "listitem",
+    "listitem"
   );
 }
 
@@ -93,7 +88,7 @@ describe("getActiveFilterChips", () => {
         maturityTo: "2026-12-31",
         sort: "yield_desc",
       },
-      "",
+      ""
     );
 
     expect(chips).toEqual([
@@ -140,7 +135,7 @@ describe("ActiveFilterSummary", () => {
         searchQuery=""
         onRemoveFilter={() => {}}
         onClearAll={() => {}}
-      />,
+      />
     );
 
     expect(screen.getByText("Showing 3 of 10 invoices")).toBeInTheDocument();
@@ -158,7 +153,7 @@ describe("ActiveFilterSummary", () => {
         searchQuery="acme"
         onRemoveFilter={onRemoveFilter}
         onClearAll={onClearAll}
-      />,
+      />
     );
 
     expect(screen.getByLabelText("Active filters")).toBeInTheDocument();
@@ -181,7 +176,7 @@ describe("ActiveFilterSummary", () => {
         searchQuery=""
         onRemoveFilter={() => {}}
         onClearAll={() => {}}
-      />,
+      />
     );
 
     expect(screen.queryByLabelText("Active filters")).not.toBeInTheDocument();
@@ -268,7 +263,9 @@ describe("InvestMarketplace results summary", () => {
     render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
     await flushTimers(0);
 
-    expect(screen.getByText(`Showing ${PAGE_SIZE} of ${invoices.length} invoices`)).toBeInTheDocument();
+    expect(
+      screen.getByText(`Showing ${PAGE_SIZE} of ${invoices.length} invoices`)
+    ).toBeInTheDocument();
   });
 
   it("shows active filter chips and updates the summary when a filter is applied", async () => {

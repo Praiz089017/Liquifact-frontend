@@ -3,13 +3,9 @@ import path from "node:path";
 
 describe("developer setup guide", () => {
   const repoRoot = path.resolve(__dirname, "..");
-  const packageJson = JSON.parse(
-    fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"),
-  );
+  const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
   const guidePath = path.join(repoRoot, "docs/getting-started.md");
-  const guide = fs.existsSync(guidePath)
-    ? fs.readFileSync(guidePath, "utf8")
-    : "";
+  const guide = fs.existsSync(guidePath) ? fs.readFileSync(guidePath, "utf8") : "";
 
   it("documents the required package scripts used by contributors", () => {
     expect(packageJson.scripts).toBeDefined();

@@ -1,8 +1,8 @@
-import '@testing-library/jest-dom';
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
-import WalletStatus, { WALLET_STATES } from '../WalletStatus';
-import { ToastProvider } from '../ToastProvider';
-import { WalletProvider } from '../WalletProvider';
+import "@testing-library/jest-dom";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
+import WalletStatus, { WALLET_STATES } from "../WalletStatus";
+import { ToastProvider } from "../ToastProvider";
+import { WalletProvider } from "../WalletProvider";
 
 function renderWalletStatus() {
   return render(
@@ -39,7 +39,7 @@ describe("WalletStatus — initial (disconnected) state", () => {
     expect(screen.getByRole("button", { name: /connect wallet/i })).toBeInTheDocument();
   });
 
-  it('sr-only status region reflects disconnected state', () => {
+  it("sr-only status region reflects disconnected state", () => {
     renderWalletStatus();
     expect(getWalletStatusRegion()).toHaveTextContent(/disconnected/i);
   });
@@ -55,7 +55,7 @@ describe("WalletStatus — DISCONNECTED → CONNECTING transition", () => {
 
 describe("WalletStatus — CONNECTING → CONNECTED (success path)", () => {
   async function connectSuccessfully() {
-    jest.spyOn(Math, 'random').mockReturnValue(0); // index 0 -> success
+    jest.spyOn(Math, "random").mockReturnValue(0); // index 0 -> success
     renderWalletStatus();
     fireEvent.click(screen.getByRole("button", { name: /connect wallet/i }));
     await act(async () => {
@@ -73,16 +73,18 @@ describe("WalletStatus — CONNECTING → CONNECTED (success path)", () => {
 
 describe("WalletStatus — CONNECTING → ERROR (error path)", () => {
   async function connectWithError() {
-    jest.spyOn(Math, 'random').mockReturnValue(0.4); // index 1 -> error state explicitly
+    jest.spyOn(Math, "random").mockReturnValue(0.4); // index 1 -> error state explicitly
     renderWalletStatus();
-    const btn = screen.getByRole('button', { name: /connect wallet/i });
+    const btn = screen.getByRole("button", { name: /connect wallet/i });
     fireEvent.click(btn);
-    await act(async () => { jest.advanceTimersByTime(1500); });
+    await act(async () => {
+      jest.advanceTimersByTime(1500);
+    });
   }
 
   afterEach(() => jest.restoreAllMocks());
 
-  it('shows error helper text', async () => {
+  it("shows error helper text", async () => {
     await connectWithError();
     expect(screen.getByText(/failed to connect/i)).toBeInTheDocument();
   });

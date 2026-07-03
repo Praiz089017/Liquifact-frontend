@@ -30,7 +30,7 @@ exports[`InvoiceCard — snapshot matches snapshot for a complete invoice 1`] = 
         <p
           class="font-mono text-slate-200"
         >
-          50,000.00 USDC
+          $50,000
         </p>
         <p
           class="text-xs text-slate-500 mt-0.5"
