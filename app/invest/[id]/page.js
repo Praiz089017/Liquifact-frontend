@@ -1,13 +1,13 @@
 "use client";
 
-import Button from "@/components/Button";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import StatusPill from "@/components/StatusPill";
 import WalletStatus from "@/components/WalletStatus";
+import { useToast } from "@/components/ToastProvider";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import {
   INVALID_VALUE_FALLBACK,
@@ -31,12 +31,46 @@ function formatYield(value) {
     : `${formattedYield}%`;
 }
 
+export function copyToClipboardFallback(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+export async function copyInvoiceUrl(id) {
+  const url = `${window.location.origin}/invest/${id}`;
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+  } else {
+    copyToClipboardFallback(url);
+  }
+  return url;
+}
+
 export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
   const params = useParams();
   const id = params?.id;
   const [invoice, setInvoice] = useState(null);
   const [loadError, setLoadError] = useState("");
   const { state: walletState, connect } = useWallet();
+  const toast = useToast();
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await copyInvoiceUrl(id);
+      toast.success("Invoice link copied to clipboard.", "Link copied");
+    } catch {
+      toast.error("Could not copy link to clipboard.", "Copy failed");
+    }
+  }, [id, toast]);
 
   useEffect(() => {
     if (!id) {
@@ -162,15 +196,25 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
               </dl>
             </section>
 
-            <button
-              type="button"
-              onClick={handleFund}
-              disabled={isFundingDisabled}
-              className="rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Fund this invoice"
-            >
-              Fund this invoice
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleFund}
+                disabled={isFundingDisabled}
+                className="rounded-full bg-cyan-500/20 text-cyan-400 px-6 py-3 text-sm font-medium hover:bg-cyan-500/30 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Fund this invoice"
+              >
+                Fund this invoice
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800/50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500"
+                aria-label="Copy invoice link to clipboard"
+              >
+                Copy link
+              </button>
+            </div>
 
             <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-300">
               Note: Yield references are educational only and reflect on-chain basis-point

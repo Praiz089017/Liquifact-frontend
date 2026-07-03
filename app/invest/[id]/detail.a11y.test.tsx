@@ -13,6 +13,10 @@ jest.mock('next/navigation', () => {
   };
 });
 
+jest.mock('@/components/ToastProvider', () => ({
+  useToast: () => ({ success: jest.fn(), error: jest.fn() }),
+}));
+
 jest.mock('@/components/WalletContext', () => {
   return {
     WALLET_STATES: {
@@ -72,7 +76,7 @@ describe('InvoiceDetail accessibility', () => {
     expect(screen.getByText('Estimated yield').tagName).toBe('DT');
     expect(screen.getByText('Maturity date').tagName).toBe('DT');
 
-    expect(screen.getByText('USD 5,000').tagName).toBe('DD');
+    expect(screen.getByText('$5,000').tagName).toBe('DD');
     expect(screen.getByText('8.2%').tagName).toBe('DD');
     expect(screen.getByText('2026-12-31').tagName).toBe('DD');
 

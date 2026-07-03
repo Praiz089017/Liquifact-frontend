@@ -14,6 +14,7 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [InvoiceListSkeleton](#invoicelistskeleton)
 - [InvoiceSearch](#invoicesearch)
 - [NavMenu](#navmenu)
+- [InvoiceDetail (page)](#invoicedetail-page)
 - [StatusPill](#statuspill)
 - [ThemeToggle](#themetoggle)
 - [ToastProvider / useToast](#toastprovider--usetoast)
@@ -553,6 +554,38 @@ import StatusPill from '@/components/StatusPill';
 <StatusPill status={null} />             // → "Unknown" pill
 <StatusPill status="legacy-available" /> // → "Unknown" pill
 ```
+
+---
+
+## InvoiceDetail (page)
+
+Invoice detail view rendered at `/invest/[id]`. Shows the full terms of a single invoice and provides fund and share actions.
+
+**File:** `app/invest/[id]/page.js`
+
+### Exports
+
+| Export                       | Description                                                        |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `InvoiceDetail`              | The presentational component (accepts injectable `loadInvoice`)    |
+| `default` (page wrapper)     | App Router page that renders `<InvoiceDetail />`                   |
+| `copyInvoiceUrl(id)`         | Async helper that copies `/invest/{id}` URL to clipboard           |
+| `copyToClipboardFallback(text)` | Creates a hidden textarea and uses `execCommand('copy')`        |
+
+### Copy-link button
+
+When an invoice is loaded, a **"Copy link"** button appears next to the "Fund this invoice" button:
+
+- Writes `{origin}/invest/{id}` to the clipboard via `navigator.clipboard.writeText()` (preferred) or `document.execCommand('copy')` (fallback)
+- On success, fires a **success toast** (`"Invoice link copied to clipboard."`)
+- On failure, fires an **error toast** (`"Could not copy link to clipboard."`)
+- Uses the existing `ToastProvider` / `useToast` system — no separate UI state
+- Button carries `aria-label="Copy invoice link to clipboard"` for accessibility
+
+### Accessibility
+
+- The copy-link button is a `<button type="button">` with a descriptive `aria-label` that stays constant (no text swap).
+- Confirmation is announced via the toast system's `aria-live="polite"` container, so screen readers hear the success/error message without shifting layout.
 
 ---
 
