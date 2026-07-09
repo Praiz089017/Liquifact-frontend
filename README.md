@@ -176,6 +176,10 @@ All interactive elements (nav links, card links, buttons) use a consistent `focu
 - `.skip-link` — positions and reveals the skip link on focus
 - `.focus-ring` — reusable `focus-visible` outline for custom interactive elements
 
+### Home page heading structure
+
+The home page uses a single `<h1>` for the hero title and `<h2>` headings for the two CTA cards only. The "API status" panel label is a `<p>`, not a heading, so it does not appear in the heading outline.
+
 ---
 
 ## CI/CD
@@ -592,22 +596,9 @@ All interactive elements (nav links, card links, buttons) use a consistent `focu
 - `.skip-link` — positions and reveals the skip link on focus
 - `.focus-ring` — reusable `focus-visible` outline for custom interactive elements
 
-### Toast notification keyboard behaviour
+### Home page heading structure
 
-Toast notifications (`ToastProvider`) are fully operable without a mouse:
-
-| Action | Keyboard shortcut |
-|---|---|
-| Reach the toast | **Tab** — each toast card has `tabIndex=0` and sits in the natural tab order |
-| Pause auto-dismiss | Focus the card or its Close button — the countdown timer pauses while focus is anywhere inside the toast, mirroring hover behaviour |
-| Resume auto-dismiss | Move focus out of the toast — the timer restarts from `AUTO_DISMISS_MS` |
-| Dismiss the toast | **Escape** — dismisses the focused toast (only that toast) |
-| Dismiss via button | **Enter** / **Space** on the "Close" button inside the toast |
-| Focus return | After any dismissal (Escape or Close button), focus is automatically returned to the element that was focused before the user tabbed into the toast region, preventing focus loss to `<body>` |
-
-Multiple toasts are stacked and individually dismissible — pressing Escape only closes the one that currently has focus.
-
-The `role="status"` / `aria-live="polite"` region is unchanged; new toast content is still announced by screen readers on arrival without interrupting the current reading flow.
+The home page uses a single `<h1>` for the hero title and `<h2>` headings for the two CTA cards only. The "API status" panel label is a `<p>`, not a heading, so it does not appear in the heading outline.
 
 ### Reduced-motion support
 
