@@ -14,7 +14,6 @@ Shared UI components for the LiquiFact frontend. All components live under `comp
 - [InvoiceListSkeleton](#invoicelistskeleton)
 - [InvoiceSearch](#invoicesearch)
 - [NavMenu](#navmenu)
-- [StatusLegendFilter](#statuslegendfilter)
 - [StatusPill](#statuspill)
 - [ThemeToggle](#themetoggle)
 - [ToastProvider / useToast](#toastprovider--usetoast)
@@ -612,6 +611,36 @@ import { StatusLegendFilter } from '@/components/InvoiceFilters';
 // Multi-status union (Open OR Overdue)
 <StatusLegendFilter selectedStatuses={['Open', 'Overdue']} onStatusToggle={toggle} onClearStatuses={clear} />
 ```
+
+---
+
+## InvoiceDetail (page)
+
+Invoice detail view rendered at `/invest/[id]`. Shows the full terms of a single invoice and provides fund, share, and print/Save PDF actions.
+
+**File:** `app/invest/[id]/page.js`
+
+### Exports
+
+| Export                       | Description                                                        |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `InvoiceDetail`              | The presentational component (accepts injectable `loadInvoice`)    |
+| `default` (page wrapper)     | App Router page that renders `<InvoiceDetail />`                   |
+| `copyInvoiceUrl(id)`         | Async helper that copies `/invest/{id}` URL to clipboard           |
+| `copyToClipboardFallback(text)` | Creates a hidden textarea and uses `execCommand('copy')`        |
+
+### Action buttons
+
+When an invoice is loaded, three buttons appear:
+
+- **"Fund this invoice"** — connects wallet or funds the invoice
+- **"Copy link"** — writes `{origin}/invest/{id}` to clipboard via `navigator.clipboard.writeText()` (preferred) or `document.execCommand('copy')` (fallback); shows success/error toast
+- **"Print / Save PDF"** — calls `window.print()` to trigger the browser's native print dialog
+
+### Accessibility
+
+- All three buttons are `<button type="button">` with descriptive `aria-label` attributes that stay constant.
+- Confirmation is announced via the toast system's `aria-live="polite"` container, so screen readers hear the success/error message without shifting layout.
 
 ---
 

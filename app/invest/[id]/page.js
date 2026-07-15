@@ -1,13 +1,13 @@
 "use client";
 
-import Button from "@/components/Button";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import StatusPill from "@/components/StatusPill";
 import WalletStatus from "@/components/WalletStatus";
+import { useToast } from "@/components/ToastProvider";
 import { useWallet, WALLET_STATES } from "@/components/WalletContext";
 import { INVALID_VALUE_FALLBACK, formatAmount, formatCurrency } from "@/lib/format/currency";
 import { getInvoiceById } from "../lib";
@@ -73,12 +73,46 @@ function buildInvoiceJsonLd(invoice) {
   };
 }
 
+export function copyToClipboardFallback(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+export async function copyInvoiceUrl(id) {
+  const url = `${window.location.origin}/invest/${id}`;
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+  } else {
+    copyToClipboardFallback(url);
+  }
+  return url;
+}
+
 export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
   const params = useParams();
   const id = params?.id;
   const [invoice, setInvoice] = useState(null);
   const [loadError, setLoadError] = useState("");
   const { state: walletState, connect } = useWallet();
+  const toast = useToast();
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await copyInvoiceUrl(id);
+      toast.success("Invoice link copied to clipboard.", "Link copied");
+    } catch {
+      toast.error("Could not copy link to clipboard.", "Copy failed");
+    }
+  }, [id, toast]);
 
   useEffect(() => {
     if (!id) {
@@ -213,7 +247,7 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
               </dl>
             </section>
 
-            <div className="no-print flex gap-3 flex-wrap">
+            <div className="no-print flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={handleFund}
@@ -223,7 +257,14 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
               >
                 Fund this invoice
               </button>
-
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="rounded-full border border-slate-700 text-slate-300 px-6 py-3 text-sm font-medium hover:bg-slate-800/50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-cyan-500"
+                aria-label="Copy invoice link to clipboard"
+              >
+                Copy link
+              </button>
               <button
                 type="button"
                 onClick={handlePrint}

@@ -71,7 +71,7 @@ exports[`InvoiceCard — snapshot matches snapshot for a complete invoice 1`] = 
       >
         <span
           aria-label="Status: Open"
-          class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-900/50 text-emerald-300 border border-emerald-700/40"
+          class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-cyan-900/40 text-cyan-300 border border-cyan-700/50"
           data-status="Open"
           role="status"
         >
