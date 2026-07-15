@@ -110,6 +110,43 @@ The Invest page (`app/invest/page.js`) includes an issuer search field above the
 
 If the marketplace fails to load invoices, an `ErrorBanner` is rendered with a **"Try again"** action. Clicking it resets the component to the loading skeleton, cancels any stale in-flight request via `AbortController`, and re-invokes `loadInvoices`. The polite `aria-live` status region is cleared on retry and re-announced once the new load settles.
 
+### Error and Not-Found Boundaries
+
+LiquiFact ships three App Router boundary files that replace Next.js's default plain-white error and 404 pages with branded, accessible versions consistent with the dark slate/cyan theme.
+
+| File | When activated | Key behaviour |
+|---|---|---|
+| `app/error.js` | Any segment throws during render or data-fetching | Wraps `ErrorBanner`; logs via `reportError`; exposes a **Try again** reset button |
+| `app/not-found.js` | `notFound()` is called, or no route matches the URL | Branded 404 with decorative status code and a home link |
+| `app/global-error.js` | `app/layout.js` itself throws (rare, layout-level) | Must render `<html>`/`<body>` itself; uses inline styles as a defensive fallback |
+
+#### `app/error.js`
+
+- **Client component** (`"use client"`) — required by Next.js for the `reset` prop.
+- Calls `reportError(error, { digest: error.digest })` inside a `useEffect` so errors are forwarded to the pluggable observability sink (swap `console.error` for Sentry/Datadog via `lib/observability/reportError.js`).
+- `error.digest` is the server-side opaque identifier that correlates browser errors with server logs — it is never exposed in the UI.
+- The **Try again** button calls the `reset()` function provided by Next.js, which unmounts and re-mounts the failed subtree without a full navigation.
+- All copy strings are sourced from `copy.error.*` in `app/copy/en.js`.
+
+#### `app/not-found.js`
+
+- **Server component** — no `"use client"` directive needed.
+- The decorative "404" badge is `aria-hidden="true"` so screen readers hear only the meaningful `<h1>`.
+- The **"← Back to LiquiFact"** link uses the `.focus-ring` utility for a consistent, theme-aware keyboard outline.
+- All copy strings are sourced from `copy.notFound.*` in `app/copy/en.js`.
+
+#### `app/global-error.js`
+
+- **Client component** — required by Next.js for `reset`.
+- Renders its own `<html>` and `<body>` tags (Next.js requirement at the layout boundary).
+- Uses **inline styles** rather than Tailwind classes as a defensive measure — at this error level the global CSS bundle may not have loaded.
+- The error container uses `role="alert"` / `aria-live="assertive"` so screen readers immediately announce the critical failure.
+- All copy strings are sourced from `copy.globalError.*` in `app/copy/en.js`.
+
+#### Adding new copy
+
+All user-visible strings live in `app/copy/en.js`. To change wording, update the relevant key under `copy.error`, `copy.notFound`, or `copy.globalError` — never inline strings directly in the boundary files.
+
 ### File Upload Security
 
 The invoice upload system (`components/UploadZone.jsx`) implements comprehensive security validation for PDF files:
@@ -138,6 +175,9 @@ liquifact-frontend/
 ├── app/
 │   ├── layout.js           # Root layout, LiquiFact metadata
 │   ├── page.js             # Home (wallet CTA, API health check)
+│   ├── error.js            # Route-level error boundary (uses ErrorBanner)
+│   ├── not-found.js        # Global 404 boundary (branded, home link)
+│   ├── global-error.js     # Layout-level error boundary (renders html/body)
 │   ├── copy/en.js          # Centralised UI copy
 │   ├── invoices/           # SME invoice upload page
 │   └── invest/             # Investor marketplace

@@ -95,4 +95,25 @@ export const copy = {
     errorConnect: "Failed to connect to wallet. Please try again.",
     errorWrongNetwork: "Wallet is connected to testnet. Please switch to public network.",
   },
+  error: {
+    title: "Something went wrong",
+    description:
+      "An unexpected error occurred. We\u2019ve been notified and are looking into it.",
+    actionLabel: "Try again",
+    previewLabel: "Error boundary",
+  },
+  notFound: {
+    heading: "Page not found",
+    description:
+      "The page you\u2019re looking for doesn\u2019t exist or has been moved.",
+    homeLabel: "\u2190 Back to LiquiFact",
+    statusLabel: "404",
+  },
+  globalError: {
+    heading: "Critical error",
+    description:
+      "A layout-level error occurred. Please reload the page or return home.",
+    reloadLabel: "Reload page",
+    homeLabel: "\u2190 Back to LiquiFact",
+  },
 };
