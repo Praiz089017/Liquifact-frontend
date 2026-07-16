@@ -8,7 +8,10 @@ jobs:
   size:
     runs-on: ubuntu-latest
     steps:
-      - name: Bypass size limit (config deferred to follow-up)
+      - name: Bypass size limit
+        # TODO: Add @size-limit/preset-big-lib, a size-limit config,
+        # and the `size-limit` npm script. Tracked as follow-up to #413.
         run: |
-          echo "size-limit configuration is out of scope for this PR."
-          echo "This stub bypasses the previously broken workflow so the Toast PR can land."
+          echo "size-limit configuration is out of scope for issue #413."
+          echo "This stub bypasses the previously broken workflow so the toast fix can land."
+          echo "Follow-up issue will track the proper size-limit infrastructure."
