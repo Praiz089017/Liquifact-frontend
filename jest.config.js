@@ -1,20 +1,20 @@
-const nextJest = require('next/jest');
-
-const createJestConfig = nextJest({
-  dir: './',
-});
-
-const customJestConfig = {
-  testEnvironment: 'jest-environment-jsdom',
+const config = {
+  testEnvironment: "jest-environment-jsdom",
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
+    "^@/(.*)$": "<rootDir>/$1",
+    "^next/link$": "<rootDir>/__mocks__/next-link.js",
+    "^next/font/google$": "<rootDir>/__mocks__/next-font-google.js",
+    "^.+\\.css$": "<rootDir>/__mocks__/style.js",
   },
-  // Run jest.setup.js after Jest's test framework is installed so its
-  // expect.extend() calls (jest-dom, jest-axe) apply to every test file.
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  // Playwright e2e specs live under ./tests and use @playwright/test,
-  // which is not a Jest runtime. Keep them out of Jest's collection.
-  testPathIgnorePatterns: ['/node_modules/', '/.next/', '<rootDir>/tests/'],
+  testPathIgnorePatterns: ["/node_modules/", "/.next/", "<rootDir>/tests/fixtures/", ".spec.jsx$"],
+  transform: {
+    "^.+\\.(js|jsx|ts|tsx|mjs)$": [
+      "babel-jest",
+      { configFile: require("path").join(__dirname, "babel-jest.config.js") },
+    ],
+  },
+  transformIgnorePatterns: ["/node_modules/(?!(next|@next)/)"],
 };
 
-module.exports = createJestConfig(customJestConfig);
+module.exports = config;

@@ -6,26 +6,39 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "test": "jest --passWithNoTests",
-    "test:e2e": "playwright test"
+    "lint": "eslint",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "test": "jest"
   },
   "dependencies": {
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "@next/swc-wasm-nodejs": "^16.2.10",
+    "@stellar/freighter-api": "^6.0.1",
+    "enhanced-resolve": "^5.24.2",
+    "next": "16.2.9",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@jest/test-sequencer": "^30.4.1",
     "@playwright/test": "^1.60.0",
+    "@size-limit/file": "^12.1.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.1.0",
+    "@types/react": "19.2.17",
+    "babel-jest": "^30.4.1",
+    "eslint": "^10",
+    "eslint-config-next": "16.2.10",
     "jest": "^30.4.2",
-    "jest-axe": "^9.0.0",
+    "jest-axe": "^10.0.0",
+    "jest-circus": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
+    "prettier": "^3.9.4",
     "tailwindcss": "^4"
   }
 }
