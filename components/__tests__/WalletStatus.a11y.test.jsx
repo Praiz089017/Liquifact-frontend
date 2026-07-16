@@ -1,9 +1,16 @@
 import { render } from '@testing-library/react';
 import WalletStatus from '../WalletStatus';
-import { axe } from 'jest-axe';
+import { ToastProvider } from '../ToastProvider';
+import { axe, toHaveNoViolations } from 'jest-axe';
+
+expect.extend(toHaveNoViolations);
 
 test('WalletStatus has no accessibility violations', async () => {
-  const { container } = render(<WalletStatus />);
+  const { container } = render(
+    <ToastProvider>
+      <WalletStatus />
+    </ToastProvider>
+  );
   const results = await axe(container);
   expect(results).toHaveNoViolations();
 });
