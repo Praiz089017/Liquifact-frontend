@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { copy } from "../app/copy/en";
 import { isPdfMagicValid, validatePdfFile, sanitizeFilename } from "../lib/validation/pdf";
+import { env } from "../lib/config/env";
 
 // Base URL for backend API; validated and centralized in lib/config/env.
 const API_URL = env.apiUrl;
@@ -15,8 +16,6 @@ const FILE_CONSTRAINTS = {
   maxSizeMb: 10,
   maxSizeBytes: MAX_UPLOAD_BYTES,
 };
-
-const MAX_UPLOAD_BYTES = FILE_CONSTRAINTS.maxSizeBytes;
 
 function ConstraintBadge({ icon, label }) {
   return (
