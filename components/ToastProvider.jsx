@@ -1,36 +1,52 @@
-'use client';
+"use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 const ToastContext = createContext(null);
+export { ToastContext };
 const AUTO_DISMISS_MS = 5000;
+// Keep the visible toast stack small so bursty errors do not cover the viewport.
+const MAX_TOASTS = 3;
 const VARIANT_STYLES = {
   success: {
-    base: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100',
-    accent: 'text-emerald-300',
-    icon: '✅',
-    label: 'Success',
+    base: "border-emerald-500/30 bg-emerald-500/10 text-emerald-100",
+    accent: "text-emerald-300",
+    icon: "✅",
+    label: "Success",
   },
   error: {
-    base: 'border-red-500/30 bg-red-500/10 text-red-100',
-    accent: 'text-red-300',
-    icon: '❌',
-    label: 'Error',
+    base: "border-red-500/30 bg-red-500/10 text-red-100",
+    accent: "text-red-300",
+    icon: "❌",
+    label: "Error",
   },
   info: {
-    base: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100',
-    accent: 'text-cyan-300',
-    icon: 'ℹ️',
-    label: 'Info',
+    base: "border-cyan-500/20 bg-cyan-500/10 text-cyan-100",
+    accent: "text-cyan-300",
+    icon: "ℹ️",
+    label: "Info",
   },
 };
 
-function createToast({ variant = 'info', title, message }) {
+function getToastKey({ variant = "info", title, message }) {
+  return `${variant}::${title || ""}::${message || ""}`;
+}
+
+function createToast({ variant = "info", title, message }) {
   return {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     variant,
-    title: title || VARIANT_STYLES[variant]?.label || 'Notice',
+    title: title || VARIANT_STYLES[variant]?.label || "Notice",
     message,
+    key: getToastKey({ variant, title, message }),
     autoDismiss: true,
   };
 }
@@ -38,9 +54,14 @@ function createToast({ variant = 'info', title, message }) {
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const timers = useRef(new Map());
+  // Tracks the element that was focused before the user moved focus into a toast.
+  // Used to restore focus after a toast is dismissed via keyboard so focus does not
+  // fall back to <body> (which would lose the user's place in the page).
+  const preDismissFocusRef = useRef(null);
+  // Ref to the toast container so we can detect focus moving outside it.
+  const containerRef = useRef(null);
 
-  const removeToast = useCallback((id) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id));
+  const clearToastTimer = useCallback((id) => {
     const timeout = timers.current.get(id);
     if (timeout) {
       clearTimeout(timeout);
@@ -48,19 +69,79 @@ export function ToastProvider({ children }) {
     }
   }, []);
 
-  const addToast = useCallback(({ variant, title, message }) => {
-    const toast = createToast({ variant, title, message });
-    setToasts((current) => [toast, ...current]);
-  }, []);
+  const removeToast = useCallback(
+    (id) => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+      clearToastTimer(id);
+    },
+    [clearToastTimer]
+  );
 
-  const pauseToast = useCallback((id) => {
-    const timeout = timers.current.get(id);
-    if (timeout) {
-      clearTimeout(timeout);
-      timers.current.delete(id);
-    }
-  }, []);
+  const scheduleToastTimer = useCallback(
+    (id) => {
+      clearToastTimer(id);
+      const timeout = setTimeout(() => removeToast(id), AUTO_DISMISS_MS);
+      timers.current.set(id, timeout);
+    },
+    [clearToastTimer, removeToast]
+  );
 
+  const addToast = useCallback(
+    ({ variant, title, message }) => {
+      const nextToast = createToast({ variant, title, message });
+      const key = nextToast.key;
+      let timerAction = null;
+
+      setToasts((current) => {
+        const existingIndex = current.findIndex((toast) => toast.key === key);
+
+        if (existingIndex !== -1) {
+          const existingToast = current[existingIndex];
+          timerAction = { type: "refresh", id: existingToast.id };
+          return current;
+        }
+
+        if (current.length >= MAX_TOASTS) {
+          timerAction = {
+            type: "replace",
+            removedId: current[current.length - 1].id,
+            id: nextToast.id,
+          };
+          const next = [nextToast, ...current.slice(0, MAX_TOASTS - 1)];
+          return next;
+        }
+
+        timerAction = { type: "add", id: nextToast.id };
+        return [nextToast, ...current];
+      });
+
+      if (timerAction?.type === "refresh") {
+        scheduleToastTimer(timerAction.id);
+        return;
+      }
+
+      if (timerAction?.type === "replace") {
+        clearToastTimer(timerAction.removedId);
+        scheduleToastTimer(timerAction.id);
+        return;
+      }
+
+      if (timerAction?.type === "add") {
+        scheduleToastTimer(timerAction.id);
+      }
+    },
+    [clearToastTimer, scheduleToastTimer]
+  );
+
+  // Pause auto-dismiss — used by both mouseenter (pointer) and focus (keyboard).
+  const pauseToast = useCallback(
+    (id) => {
+      clearToastTimer(id);
+    },
+    [clearToastTimer]
+  );
+
+  // Resume auto-dismiss — used by both mouseleave (pointer) and blur (keyboard).
   const resumeToast = useCallback(
     (id) => {
       if (timers.current.has(id)) {
@@ -69,38 +150,43 @@ export function ToastProvider({ children }) {
       setToasts((current) => {
         const toastExists = current.some((toast) => toast.id === id);
         if (!toastExists) return current;
-        const timeout = setTimeout(() => removeToast(id), AUTO_DISMISS_MS);
-        timers.current.set(id, timeout);
+        scheduleToastTimer(id);
         return current;
       });
     },
-    [removeToast],
+    [scheduleToastTimer]
+  );
+
+  // Dismiss the toast and return focus to the element that was active before the
+  // user tabbed into the toast region. This prevents focus from falling to <body>.
+  const dismissAndReturnFocus = useCallback(
+    (id) => {
+      const target = preDismissFocusRef.current;
+      removeToast(id);
+      // Restore focus after React has removed the toast from the DOM.
+      if (target && typeof target.focus === "function") {
+        // Use setTimeout(0) so the DOM has settled before we re-focus.
+        setTimeout(() => target.focus(), 0);
+      }
+    },
+    [removeToast]
   );
 
   useEffect(() => {
     const currentTimers = timers.current;
-
-    toasts.forEach((toast) => {
-      if (!toast.autoDismiss || currentTimers.has(toast.id)) {
-        return;
-      }
-      const timeout = setTimeout(() => removeToast(toast.id), AUTO_DISMISS_MS);
-      currentTimers.set(toast.id, timeout);
-    });
-
     return () => {
       currentTimers.forEach((timeout) => clearTimeout(timeout));
       currentTimers.clear();
     };
-  }, [removeToast, toasts]);
+  }, []);
 
   const value = useMemo(
     () => ({
-      success: (message, title) => addToast({ variant: 'success', title, message }),
-      error: (message, title) => addToast({ variant: 'error', title, message }),
-      info: (message, title) => addToast({ variant: 'info', title, message }),
+      success: (message, title) => addToast({ variant: "success", title, message }),
+      error: (message, title) => addToast({ variant: "error", title, message }),
+      info: (message, title) => addToast({ variant: "info", title, message }),
     }),
-    [addToast],
+    [addToast]
   );
 
   return (
@@ -110,6 +196,7 @@ export function ToastProvider({ children }) {
       <div
         aria-live="polite"
         role="status"
+        ref={containerRef}
         className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:justify-end sm:px-6"
       >
         <div className="flex w-full max-w-md flex-col gap-3">
@@ -119,8 +206,37 @@ export function ToastProvider({ children }) {
             return (
               <div
                 key={toast.id}
+                // tabIndex={0} makes the card itself focusable so keyboard users can
+                // reach it via Tab and then use Escape to dismiss without having to
+                // navigate to the Close button first.
+                tabIndex={0}
                 onMouseEnter={() => pauseToast(toast.id)}
                 onMouseLeave={() => resumeToast(toast.id)}
+                // Mirror hover pause/resume for keyboard users: focusing the card (or
+                // any element inside it) pauses the timer; blurring resumes it.
+                onFocus={(e) => {
+                  // Record the previously-focused element the first time focus enters
+                  // this toast so we can restore it on dismissal.
+                  if (!containerRef.current?.contains(e.relatedTarget)) {
+                    preDismissFocusRef.current = e.relatedTarget;
+                  }
+                  pauseToast(toast.id);
+                }}
+                onBlur={(e) => {
+                  // Only resume if focus has left this toast entirely (not just moved
+                  // between the card and its Close button).
+                  if (!containerRef.current?.contains(e.relatedTarget)) {
+                    resumeToast(toast.id);
+                  }
+                }}
+                // Escape dismisses the currently-focused toast, matching common dialog
+                // and menu patterns so keyboard users have a single consistent shortcut.
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    dismissAndReturnFocus(toast.id);
+                  }
+                }}
                 className={`pointer-events-auto overflow-hidden rounded-3xl border p-4 shadow-2xl shadow-slate-950/30 transition duration-200 ${variant.base}`}
               >
                 <div className="flex items-start gap-3">
@@ -135,7 +251,7 @@ export function ToastProvider({ children }) {
                     type="button"
                     className="rounded-full border border-slate-700/80 bg-slate-950/70 px-2.5 py-1 text-xs font-semibold text-slate-100 outline-none transition duration-150 hover:bg-slate-900 focus-visible:ring-2 focus-visible:ring-cyan-400"
                     aria-label="Dismiss notification"
-                    onClick={() => removeToast(toast.id)}
+                    onClick={() => dismissAndReturnFocus(toast.id)}
                   >
                     Close
                   </button>
@@ -152,7 +268,7 @@ export function ToastProvider({ children }) {
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
+    throw new Error("useToast must be used within a ToastProvider");
   }
   return context;
 }

@@ -1,4 +1,4 @@
-import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
+import InvoiceListSkeleton from "../../components/InvoiceListSkeleton";
 
 export default function InvestLoading() {
   return (
@@ -17,10 +17,7 @@ export default function InvestLoading() {
         <div className="mb-8 rounded-xl border border-slate-800 bg-slate-900/30 p-6">
           <div className="flex flex-wrap gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-10 w-32 rounded-lg bg-slate-800 animate-pulse"
-              />
+              <div key={i} className="h-10 w-32 rounded-lg bg-slate-800 animate-pulse" />
             ))}
           </div>
         </div>
