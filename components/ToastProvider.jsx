@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 const ToastContext = createContext(null);
 const AUTO_DISMISS_MS = 5000;
+
 const VARIANT_STYLES = {
   success: {
     base: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100',
@@ -35,9 +36,34 @@ function createToast({ variant = 'info', title, message }) {
   };
 }
 
+function canReceiveFocus(el) {
+  return (
+    el instanceof HTMLElement &&
+    typeof el.focus === 'function' &&
+    !el.hasAttribute('disabled') &&
+    el.isConnected
+  );
+}
+
+function restoreFocusTo(el) {
+  if (!canReceiveFocus(el)) return;
+  queueMicrotask(() => {
+    if (canReceiveFocus(el)) {
+      el.focus();
+    }
+  });
+}
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const timers = useRef(new Map());
+  const triggerRef = useRef(null);
+  const toastsCountRef = useRef(0);
+  const pendingUserDismissRef = useRef(false);
+
+  useEffect(() => {
+    toastsCountRef.current = toasts.length;
+  }, [toasts.length]);
 
   const removeToast = useCallback((id) => {
     setToasts((current) => current.filter((toast) => toast.id !== id));
@@ -48,9 +74,24 @@ export function ToastProvider({ children }) {
     }
   }, []);
 
+  const dismissToast = useCallback(
+    (id, { restoreFocus = false } = {}) => {
+      if (restoreFocus) {
+        pendingUserDismissRef.current = true;
+      }
+      removeToast(id);
+    },
+    [removeToast],
+  );
+
   const addToast = useCallback(({ variant, title, message }) => {
-    const toast = createToast({ variant, title, message });
-    setToasts((current) => [toast, ...current]);
+    if (toastsCountRef.current === 0) {
+      const active = document.activeElement;
+      if (canReceiveFocus(active) && active !== document.body) {
+        triggerRef.current = active;
+      }
+    }
+    setToasts((current) => [createToast({ variant, title, message }), ...current]);
   }, []);
 
   const pauseToast = useCallback((id) => {
@@ -69,12 +110,12 @@ export function ToastProvider({ children }) {
       setToasts((current) => {
         const toastExists = current.some((toast) => toast.id === id);
         if (!toastExists) return current;
-        const timeout = setTimeout(() => removeToast(id), AUTO_DISMISS_MS);
+        const timeout = setTimeout(() => dismissToast(id), AUTO_DISMISS_MS);
         timers.current.set(id, timeout);
         return current;
       });
     },
-    [removeToast],
+    [dismissToast],
   );
 
   useEffect(() => {
@@ -84,7 +125,7 @@ export function ToastProvider({ children }) {
       if (!toast.autoDismiss || currentTimers.has(toast.id)) {
         return;
       }
-      const timeout = setTimeout(() => removeToast(toast.id), AUTO_DISMISS_MS);
+      const timeout = setTimeout(() => dismissToast(toast.id), AUTO_DISMISS_MS);
       currentTimers.set(toast.id, timeout);
     });
 
@@ -92,7 +133,36 @@ export function ToastProvider({ children }) {
       currentTimers.forEach((timeout) => clearTimeout(timeout));
       currentTimers.clear();
     };
-  }, [removeToast, toasts]);
+  }, [dismissToast, toasts]);
+
+  // Restores focus to the trigger element exactly once, after the LAST toast
+  // is dismissed by a user action (Close click or Escape). Timer-driven
+  // auto-dismiss never sets `pendingUserDismissRef`, so focus is not stolen
+  // back when a toast quietly fades out.
+  useEffect(() => {
+    if (toasts.length !== 0) return;
+    if (!pendingUserDismissRef.current) return;
+    if (!triggerRef.current) return;
+    pendingUserDismissRef.current = false;
+    const el = triggerRef.current;
+    triggerRef.current = null;
+    restoreFocusTo(el);
+  }, [toasts]);
+
+  useEffect(() => {
+    if (toasts.length === 0) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      const newest = toasts[0];
+      if (!newest) return;
+      event.preventDefault();
+      dismissToast(newest.id, { restoreFocus: true });
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [dismissToast, toasts]);
 
   const value = useMemo(
     () => ({
@@ -135,7 +205,7 @@ export function ToastProvider({ children }) {
                     type="button"
                     className="rounded-full border border-slate-700/80 bg-slate-950/70 px-2.5 py-1 text-xs font-semibold text-slate-100 outline-none transition duration-150 hover:bg-slate-900 focus-visible:ring-2 focus-visible:ring-cyan-400"
                     aria-label="Dismiss notification"
-                    onClick={() => removeToast(toast.id)}
+                    onClick={() => dismissToast(toast.id, { restoreFocus: true })}
                   >
                     Close
                   </button>
