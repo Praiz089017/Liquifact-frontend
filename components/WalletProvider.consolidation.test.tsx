@@ -13,6 +13,9 @@
 import "@testing-library/jest-dom";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { ToastProvider } from "./ToastProvider";
+import * as freighter from "../lib/wallet/freighter";
+
+jest.mock("../lib/wallet/freighter");
 
 // ── Canonical source ──────────────────────────────────────────────────────────
 import {
@@ -137,30 +140,32 @@ describe("WALLET_STATES contains all required states", () => {
 // ── 4. Toast side-effects fire on connection outcomes ─────────────────────────
 describe("Toast side-effects", () => {
   it("fires a success toast on successful connect", async () => {
-    jest.spyOn(Math, "random").mockReturnValue(0); // index 0 → 'success'
+    (freighter.isFreighterConnected as jest.Mock).mockResolvedValue(true);
+    (freighter.connectFreighter as jest.Mock).mockResolvedValue("GABC...XYZ123");
+    (freighter.getFreighterNetwork as jest.Mock).mockResolvedValue("public");
+
     renderWithProviders();
 
     await act(async () => {
       screen.getByRole("button", { name: "Connect" }).click();
-      jest.advanceTimersByTime(1500);
     });
 
     await waitFor(() => {
       expect(screen.getByTestId("wallet-state")).toHaveTextContent("connected");
     });
 
-    // Toast region has role="status" — find text from ToastProvider
     expect(screen.getByText("Wallet connected")).toBeInTheDocument();
     expect(screen.getByText("Wallet connected successfully.")).toBeInTheDocument();
   });
 
   it("fires an error toast on connection failure", async () => {
-    jest.spyOn(Math, "random").mockReturnValue(0.3); // index 1 → 'error'
+    (freighter.isFreighterConnected as jest.Mock).mockResolvedValue(true);
+    (freighter.connectFreighter as jest.Mock).mockRejectedValue(new Error("User rejected connection"));
+
     renderWithProviders();
 
     await act(async () => {
       screen.getByRole("button", { name: "Connect" }).click();
-      jest.advanceTimersByTime(1500);
     });
 
     await waitFor(() => {
@@ -171,12 +176,16 @@ describe("Toast side-effects", () => {
   });
 
   it("fires an error toast on wrong network", async () => {
-    jest.spyOn(Math, "random").mockReturnValue(0.55); // index 2 → 'wrong_network'
+    (freighter.isFreighterConnected as jest.Mock).mockResolvedValue(true);
+    (freighter.connectFreighter as jest.Mock).mockResolvedValue("GABC...XYZ123");
+    (freighter.assertExpectedNetwork as jest.Mock).mockRejectedValue(
+      new Error("Connected to public. Please switch to testnet.")
+    );
+
     renderWithProviders();
 
     await act(async () => {
       screen.getByRole("button", { name: "Connect" }).click();
-      jest.advanceTimersByTime(1500);
     });
 
     await waitFor(() => {
@@ -187,12 +196,12 @@ describe("Toast side-effects", () => {
   });
 
   it("fires an error toast on no_wallet", async () => {
-    jest.spyOn(Math, "random").mockReturnValue(0.8); // index 3 → 'no_wallet'
+    (freighter.isFreighterConnected as jest.Mock).mockResolvedValue(false);
+
     renderWithProviders();
 
     await act(async () => {
       screen.getByRole("button", { name: "Connect" }).click();
-      jest.advanceTimersByTime(1500);
     });
 
     await waitFor(() => {

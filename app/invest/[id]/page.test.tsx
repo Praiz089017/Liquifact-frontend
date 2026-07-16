@@ -27,6 +27,15 @@ jest.mock("next/link", () => {
   return { __esModule: true, default: MockLink };
 });
 
+jest.mock("@/components/ToastProvider", () => ({
+  ToastProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useToast: () => ({
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+  }),
+}));
+
 jest.mock("@/components/WalletContext", () => ({
   WALLET_STATES: {
     DISCONNECTED: "disconnected",

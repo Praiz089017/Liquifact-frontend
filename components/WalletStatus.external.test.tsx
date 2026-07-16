@@ -8,6 +8,12 @@ import { WalletProvider, useWallet } from "./WalletProvider";
 import WalletStatus from "./WalletStatus";
 import { copy } from "../app/copy/en";
 
+jest.mock("@stellar/freighter-api", () => ({
+  isConnected: jest.fn().mockResolvedValue(false),
+  requestAccess: jest.fn(),
+  getNetworkDetails: jest.fn(),
+}));
+
 function TestHarness() {
   const { state } = useWallet();
   return (

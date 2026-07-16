@@ -4,6 +4,7 @@ export default function InvoiceSearch({
   value,
   onChange,
   "aria-label": ariaLabel,
+  placeholder,
   searchTerm,
   onSearchChange,
   sortOption,
@@ -20,7 +21,7 @@ export default function InvoiceSearch({
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Search invoices..."
+          placeholder={placeholder || "Search invoices..."}
           value={inputValue}
           onChange={handleChange}
           aria-label={ariaLabel}

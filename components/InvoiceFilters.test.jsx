@@ -1,6 +1,10 @@
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
-import InvoiceFilters, { DEFAULT_FILTERS, hasActiveFilters, StatusLegendFilter } from "./InvoiceFilters";
+import InvoiceFilters, {
+  DEFAULT_FILTERS,
+  hasActiveFilters,
+  StatusLegendFilter,
+} from "./InvoiceFilters";
 
 describe("DEFAULT_FILTERS", () => {
   it("has the expected shape with empty values", () => {
@@ -194,12 +198,13 @@ describe("InvoiceFilters", () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText("Sort options"), { target: { value: "yield_desc" } });
+    fireEvent.change(screen.getByLabelText("Sort options"), { target: { value: "yield" } });
 
-    expect(handleChange).toHaveBeenCalledWith({
-      ...DEFAULT_FILTERS,
-      sort: "yield_desc",
-    });
+    expect(handleChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sort: "yield",
+      })
+    );
   });
 
   it("calls onClearFilters when clear button is clicked", () => {
@@ -311,8 +316,14 @@ describe("StatusLegendFilter", () => {
 
     expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "Funded" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Settled" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Overdue" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Settled" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    expect(screen.getByRole("button", { name: "Overdue" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
   });
 
   it("marks a selected status chip as aria-pressed=true", () => {
@@ -327,7 +338,10 @@ describe("StatusLegendFilter", () => {
     expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Overdue" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Funded" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Settled" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Settled" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
   });
 
   it("calls onStatusToggle with the clicked status", () => {

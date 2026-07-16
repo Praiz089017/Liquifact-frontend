@@ -37,11 +37,11 @@ jest.mock("next/dynamic", () => {
 
       if (isLoading && options?.loading) {
         const LoadingComponent = options.loading;
-        return React.createElement(LoadingComponent, props);
+        return ReactForMock.createElement(LoadingComponent, props);
       }
 
       if (Component) {
-        return <Component {...props} />;
+        return ReactForMock.createElement(Component, props);
       }
 
       return null;
@@ -50,10 +50,10 @@ jest.mock("next/dynamic", () => {
     DynamicWrapper.displayName = "DynamicWrapper";
     const SuspenseWrapper: React.FC<any> = (props) => {
       const inlineReact = require("react");
-      return (
-        <inlineReact.Suspense fallback={options?.loading ? <options.loading {...props} /> : null}>
-          <DynamicWrapper {...props} />
-        </inlineReact.Suspense>
+      return inlineReact.createElement(
+        inlineReact.Suspense,
+        { fallback: options?.loading ? inlineReact.createElement(options.loading, props) : null },
+        inlineReact.createElement(DynamicWrapper, props)
       );
     };
     SuspenseWrapper.displayName = "SuspenseWrapper";
@@ -77,6 +77,7 @@ jest.mock("./WalletProvider", () => ({
 }));
 
 jest.mock("./ToastProvider", () => ({
+  ...jest.requireActual("./ToastProvider"),
   useToast: () => ({
     success: jest.fn(),
     error: jest.fn(),

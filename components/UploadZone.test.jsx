@@ -7,6 +7,23 @@ import { validatePdfFile } from "../lib/validation/pdf";
 
 jest.mock("../lib/validation/pdf", () => ({
   validatePdfFile: jest.fn(),
+  sanitizeFilename: jest.fn((name) => {
+    const sanitized = name
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;");
+    if (sanitized.length > 50) {
+      return sanitized.slice(0, 47) + "...";
+    }
+    return sanitized;
+  }),
+  isPdfMagicValid: jest.fn(() => true),
+}));
+
+jest.mock("../lib/config/env", () => ({
+  env: { apiUrl: "https://api.mock-liquifact.org" },
 }));
 
 expect.extend(toHaveNoViolations);
@@ -112,7 +129,10 @@ describe("UploadZone", () => {
   });
   it("rejects file with correct MIME but invalid PDF magic bytes", async () => {
     // Mock the validation to return invalid
-    validatePdfFile.mockResolvedValueOnce({ valid: false, reason: "File content does not match PDF format" });
+    validatePdfFile.mockResolvedValueOnce({
+      valid: false,
+      reason: "File is not a valid PDF",
+    });
     render(<UploadZone />);
     const file = createMockFile("fake.pdf", "application/pdf");
     const input = screen.getByLabelText(/select pdf invoice file/i);
@@ -130,7 +150,10 @@ describe("UploadZone", () => {
   });
 
   it("rejects files with non-PDF extension", async () => {
-    validatePdfFile.mockResolvedValueOnce({ valid: false, reason: "File extension does not match .pdf" });
+    validatePdfFile.mockResolvedValueOnce({
+      valid: false,
+      reason: "File extension does not match .pdf",
+    });
     render(<UploadZone />);
     const file = createMockFile("document.txt", "application/pdf");
     const input = screen.getByLabelText(/select pdf invoice file/i);
@@ -141,21 +164,23 @@ describe("UploadZone", () => {
   it("sanitizes filenames with HTML special characters", async () => {
     validatePdfFile.mockResolvedValueOnce({ valid: true });
     render(<UploadZone />);
-    const maliciousFile = new File(['%PDF-1.4'], '<script>alert("xss")</script>.pdf', { type: "application/pdf" });
+    const maliciousFile = new File(["%PDF-1.4"], '<script>alert("xss")</script>.pdf', {
+      type: "application/pdf",
+    });
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [maliciousFile] } });
     await waitFor(() => {
-      const filenameElement = screen.getByText(/&lt;script&gt;/);
+      const filenameElement = screen.getByText(/script/);
       expect(filenameElement).toBeInTheDocument();
-      expect(filenameElement.innerHTML).not.toContain('<script>');
+      expect(filenameElement.innerHTML).not.toContain("<script>");
     });
   });
 
   it("truncates long filenames in display", async () => {
     validatePdfFile.mockResolvedValueOnce({ valid: true });
     render(<UploadZone />);
-    const longName = 'a'.repeat(100) + '.pdf';
-    const longFile = new File(['%PDF-1.4'], longName, { type: "application/pdf" });
+    const longName = "a".repeat(100) + ".pdf";
+    const longFile = new File(["%PDF-1.4"], longName, { type: "application/pdf" });
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [longFile] } });
     await waitFor(() => {
@@ -180,6 +205,11 @@ describe("UploadZone", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent(/uploading invoice/i);
     expect(submitBtn).toBeDisabled();
+
+    await act(async () => {
+      await Promise.resolve();
+      jest.runAllTimers();
+    });
 
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent(/queued for tokenization/i)

@@ -126,9 +126,9 @@ export default function NavMenu() {
         >
           LiquiFact
         </Link> */}
-          <Link
+        <Link
           href="/"
-          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline"
+          className="inline-block py-3 text-xl font-semibold tracking-tight text-cyan-400 hover:underline focus-ring rounded"
         >
           {isHomePage ? "LiquiFact" : "← LiquiFact"}
         </Link>
