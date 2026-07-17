@@ -8,7 +8,12 @@ globalThis.fetch = jest.fn();
 // Mock magic-byte validation: jsdom's File.arrayBuffer() is unreliable.
 jest.mock("../lib/validation/pdf", () => ({
   isPdfMagicValid: jest.fn(),
+  validatePdfFile: jest.fn().mockResolvedValue({ valid: true }),
+  sanitizeFilename: jest.fn((name) => name),
 }));
+
+// Import the mocked isPdfMagicValid for test setup
+const { isPdfMagicValid } = jest.requireMock("../lib/validation/pdf");
 
 // Mock the copy to avoid dependency on the actual copy file in this test
 jest.mock("../app/copy/en", () => ({

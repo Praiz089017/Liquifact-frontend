@@ -5,9 +5,14 @@ import UploadZone, { FILE_CONSTRAINTS } from "./UploadZone";
 import { copy } from "../app/copy/en";
 import { validatePdfFile } from "../lib/validation/pdf";
 
-jest.mock("../lib/validation/pdf", () => ({
-  validatePdfFile: jest.fn(),
-}));
+jest.mock("../lib/validation/pdf", () => {
+  const actual = jest.requireActual("../lib/validation/pdf");
+  return {
+    validatePdfFile: jest.fn(),
+    sanitizeFilename: actual.sanitizeFilename,
+    isPdfMagicValid: jest.fn(),
+  };
+});
 
 expect.extend(toHaveNoViolations);
 
@@ -117,7 +122,7 @@ describe("UploadZone", () => {
     const file = createMockFile("fake.pdf", "application/pdf");
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [file] } });
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/valid pdf/i));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/does not match PDF format/i));
   });
 
   it("rejects zero-byte files", async () => {
@@ -145,7 +150,7 @@ describe("UploadZone", () => {
     const input = screen.getByLabelText(/select pdf invoice file/i);
     fireEvent.change(input, { target: { files: [maliciousFile] } });
     await waitFor(() => {
-      const filenameElement = screen.getByText(/&lt;script&gt;/);
+      const filenameElement = screen.getByText(/<script>/i);
       expect(filenameElement).toBeInTheDocument();
       expect(filenameElement.innerHTML).not.toContain('<script>');
     });
