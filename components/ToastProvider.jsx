@@ -127,7 +127,10 @@ export function ToastProvider({ children }) {
         if (existingIndex !== -1) {
           const existingToast = current[existingIndex];
           timerAction = { type: "refresh", id: existingToast.id };
-          return current;
+          // Bump the existing toast to the front (newest position) so
+          // re-triggered messages appear at the top of the stack.
+          if (existingIndex === 0) return current;
+          return [existingToast, ...current.slice(0, existingIndex), ...current.slice(existingIndex + 1)];
         }
 
         if (current.length >= MAX_TOASTS) {
