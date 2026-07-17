@@ -9,7 +9,8 @@
     "lint": "eslint",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "test": "jest"
+    "test": "jest",
+    "size-limit": "size-limit"
   },
   "dependencies": {
     "@next/swc-wasm-nodejs": "^16.2.10",
@@ -40,6 +41,7 @@
     "jest-circus": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "prettier": "^3.9.4",
+    "size-limit": "^12.1.0",
     "tailwindcss": "^4"
   }
 }

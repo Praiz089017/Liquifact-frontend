@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { reportError } from "../lib/observability/reportError";
 import { copy } from "./copy/en";
 
@@ -86,7 +87,7 @@ export default function GlobalLayoutError({ error, reset }) {
             >
               {copy.globalError.reloadLabel}
             </button>
-            <a
+            <Link
               href="/"
               data-testid="global-error-home-link"
               style={{
@@ -100,7 +101,7 @@ export default function GlobalLayoutError({ error, reset }) {
               }}
             >
               {copy.globalError.homeLabel}
-            </a>
+            </Link>
           </div>
         </main>
       </body>

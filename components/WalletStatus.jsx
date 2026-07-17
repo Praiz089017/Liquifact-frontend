@@ -249,6 +249,7 @@ export default function WalletStatus() {
       if (msg) {
         // Briefly clear then set so the same message re-announces if the
         // user toggles connect/disconnect repeatedly.
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear + microtask set is a deliberate pattern for screen-reader re-announcement
         setLiveAnnouncement("");
         // Use a microtask-level delay so the DOM registers the empty string
         // before the new message, ensuring screen readers re-read it.
@@ -264,69 +265,55 @@ export default function WalletStatus() {
 
   return (
     <div className="flex items-center gap-4">
-    {/* Wallet state indicator + information */}
-    <div className="flex items-center gap-3">
-      {/* Status dot */}
-      <div
-        className={`h-2 w-2 rounded-full transition-colors duration-200 ${
-          walletState === WALLET_STATES.CONNECTED
-            ? "bg-green-500"
-            : walletState === WALLET_STATES.CONNECTING
-              ? "bg-yellow-500 animate-pulse"
-              : walletState === WALLET_STATES.ERROR ||
-                  walletState === WALLET_STATES.WRONG_NETWORK
-                ? "bg-red-500"
-                : "bg-slate-600"
-        }`}
-        aria-hidden="true"
-      />
-
-      {/* Address or helper text */}
-      {config.showAddress && walletData ? (
-        <div className="flex flex-col">
-          <span className="font-mono text-sm text-slate-300">
-            {walletData.address}
-          </span>
-          <span className="text-xs text-slate-500">
-            {walletData.balance}
-          </span>
-        </div>
-      ) : (
-        <span
-          id="wallet-helper-text"
-          className="max-w-xs text-xs text-slate-400"
-        >
-          {config.helperText}
-        </span>
-      )}
-    </div>
-
-    {/* Wallet action */}
-    <Button
-      variant={config.buttonVariant}
-      loading={walletState === WALLET_STATES.CONNECTING}
-      disabled={config.disabled}
-      onClick={handleClick}
-      aria-label={config.buttonText}
-      aria-describedby="wallet-helper-text"
-      className="focus-visible:outline-2 cursor-pointer focus-visible:outline-cyan-400 focus-visible:outline-offset-2"
-    >
-      {config.buttonText}
-    </Button>
-
-    {/* Accessible status announcement */}
-    <div className="sr-only" role="status" aria-live="polite">
-      {walletState === WALLET_STATES.CONNECTED
-        ? `Wallet connected. ${
-            walletData?.address
-              ? `Connected as ${walletData.address}.`
-              : ""
-          }`
-        : `Wallet status: ${walletState}${
-            error ? `. Error: ${error}` : ""
+      {/* Wallet state indicator + information */}
+      <div className="flex items-center gap-3">
+        {/* Status dot */}
+        <div
+          className={`h-2 w-2 rounded-full transition-colors duration-200 ${
+            walletState === WALLET_STATES.CONNECTED
+              ? "bg-green-500"
+              : walletState === WALLET_STATES.CONNECTING
+                ? "bg-yellow-500 animate-pulse"
+                : walletState === WALLET_STATES.ERROR || walletState === WALLET_STATES.WRONG_NETWORK
+                  ? "bg-red-500"
+                  : "bg-slate-600"
           }`}
+          aria-hidden="true"
+        />
+
+        {/* Address or helper text */}
+        {config.showAddress && walletData ? (
+          <div className="flex flex-col">
+            <span className="font-mono text-sm text-slate-300">{walletData.address}</span>
+            <span className="text-xs text-slate-500">{walletData.balance}</span>
+          </div>
+        ) : (
+          <span id="wallet-helper-text" className="max-w-xs text-xs text-slate-400">
+            {config.helperText}
+          </span>
+        )}
+      </div>
+
+      {/* Wallet action */}
+      <Button
+        variant={config.buttonVariant}
+        loading={walletState === WALLET_STATES.CONNECTING}
+        disabled={config.disabled}
+        onClick={handleClick}
+        aria-label={config.buttonText}
+        aria-describedby="wallet-helper-text"
+        className="focus-visible:outline-2 cursor-pointer focus-visible:outline-cyan-400 focus-visible:outline-offset-2"
+      >
+        {config.buttonText}
+      </Button>
+
+      {/* Accessible status announcement */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {walletState === WALLET_STATES.CONNECTED
+          ? `Wallet connected. ${walletData?.address ? `Connected as ${walletData.address}.` : ""}`
+          : `Wallet status: ${walletState}${error ? `. Error: ${error}` : ""}`}
+      </div>
     </div>
-  </div>
   );
 }
 
