@@ -104,7 +104,35 @@ The invoices page header also uses the shared `NavMenu` component, replacing the
 
 ### Marketplace search
 
-The Invest page (`app/invest/page.js`) includes an issuer search field above the invoice list. Typing in the field filters invoices by case-insensitive substring match on `issuer`. Input is debounced at **200ms** so the text field stays responsive while filtering waits for settled input. When a filter is active, the `aria-live` status region announces the match count (e.g. "2 of 3 invoices match"). A distinct "no matches" state is shown when the filter yields zero results, separate from the empty-marketplace state.
+The Invest page (`app/invest/page.js`) includes an issuer search field (`components/InvoiceSearch.jsx`) above the invoice list.
+
+| Behaviour | Detail |
+| --------- | ------ |
+| **Component** | `InvoiceSearch` — controlled text input rendered above the filter panel |
+| **Match strategy** | Case-insensitive substring match on the `issuer` field |
+| **Debounce** | `SEARCH_DEBOUNCE_MS` (300 ms) — `debouncedSearch` state lags `searchQuery` so the DOM stays responsive while filtering waits for settled input |
+| **Filter wiring** | `filteredInvoices` (useMemo) applies `debouncedSearch` first, then the panel filters (currency, yield range, maturity range), then sort |
+| **Screen-reader announcement** | A polite `aria-live` region calls `getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCount })` — when a filter is active it announces _"N of M invoices match"_; when the full list is shown it announces _"N investable invoices loaded"_ |
+| **No-match state** | Zero filtered results shows _"No invoices match your filters."_ — a distinct empty state separate from the zero-invoices marketplace state |
+| **Cleared query** | Clearing the search field (or removing all panel filters) restores the full unfiltered list and re-announces the total count |
+
+#### `getInvoiceLoadAnnouncement` signature
+
+```js
+// app/invest/page.js
+/**
+ * Returns the screen-reader announcement text for the current list state.
+ *
+ * @param {Array}   invoices              - The full (unfiltered) invoice array.
+ * @param {object}  [options]
+ * @param {boolean} [options.filterActive]  - True when any search/panel filter is applied.
+ * @param {number}  [options.filteredCount] - Number of invoices matching the active filter(s).
+ * @returns {string}
+ */
+export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCount } = {})
+```
+
+Both `filterActive` and `filteredCount` are computed inside `InvestMarketplace` from live state (`hasAnyActiveFilters(filters, debouncedSearch)` and `filteredInvoices.length`) and are passed in explicitly — the function itself has no implicit dependencies on component state.
 
 ### Error recovery
 

@@ -123,7 +123,6 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState("");
-
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
@@ -259,11 +258,15 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
     // retryKey triggers a fresh load on retry without changing loadInvoices.
   }, [loadInvoices, retryKey]);
 
-  // Derive the live-region status from current state rather than calling setState
-  // inside an effect, which avoids triggering cascading renders.
+  // Derive the polite live-region announcement directly from reactive state.
+  // Using useMemo (rather than a useEffect + setState) avoids a cascading
+  // re-render and satisfies the react-hooks/set-state-in-effect lint rule.
   const statusMessage = useMemo(() => {
-    if (loadError) return copy.invest.errorStatus;
-    if (!Array.isArray(invoices)) return "";
+    // Loading or error states — error copy is announced by the ErrorBanner role="alert";
+    // the status region is cleared so screen readers only hear one announcement.
+    if (!Array.isArray(invoices)) {
+      return loadError ? copy.invest.errorStatus : "";
+    }
     if (filterActive) {
       return getInvoiceLoadAnnouncement(invoices, {
         filterActive: true,
@@ -274,10 +277,11 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
       return getPaginationAnnouncement(visibleCount, filteredInvoices.length);
     }
     if (visibleCount > PAGE_SIZE) {
+      // After Load more reaches the last page, keep pagination format.
       return getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length);
     }
     return getInvoiceLoadAnnouncement(invoices);
-  }, [filteredInvoices, filterActive, invoices, loadError, visibleCount]);
+  }, [filteredInvoices, filterActive, invoices, visibleCount, loadError]);
 
   // ── Load-more handler ──────────────────────────────────────────────────────
   /**
