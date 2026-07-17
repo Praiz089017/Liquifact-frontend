@@ -12,6 +12,7 @@
  *  • non-mainnet networks carry a visible non-colour marker
  */
 
+import React from "react";
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 
@@ -35,11 +36,11 @@ function renderForNetwork(network?: string) {
     process.env.NEXT_PUBLIC_STELLAR_NETWORK = network;
   }
 
-  let NetworkBadge: React.ComponentType<{ className?: string }>;
+  let NetworkBadge: React.ComponentType<{ className?: string }> | undefined;
   jest.isolateModules(() => {
     NetworkBadge = require("./NetworkBadge").default;
   });
-  return render(<NetworkBadge />);
+  return render(React.createElement(NetworkBadge!));
 }
 
 describe("NetworkBadge", () => {
@@ -84,11 +85,11 @@ describe("NetworkBadge", () => {
 
   it("appends a user-provided className", () => {
     process.env.NEXT_PUBLIC_STELLAR_NETWORK = "testnet";
-    let NetworkBadge: React.ComponentType<{ className?: string }>;
+    let NetworkBadge: React.ComponentType<{ className?: string }> | undefined;
     jest.isolateModules(() => {
       NetworkBadge = require("./NetworkBadge").default;
     });
-    render(<NetworkBadge className="md:hidden" />);
+    render(React.createElement(NetworkBadge!, { className: "md:hidden" }));
     expect(screen.getByRole("status")).toHaveClass("md:hidden");
   });
 });

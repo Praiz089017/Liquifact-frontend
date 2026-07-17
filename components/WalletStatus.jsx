@@ -255,6 +255,7 @@ export default function WalletStatus() {
       if (msg) {
         // Briefly clear then set so the same message re-announces if the
         // user toggles connect/disconnect repeatedly.
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear + microtask set is a deliberate pattern for screen-reader re-announcement
         setLiveAnnouncement("");
         // Use a microtask-level delay so the DOM registers the empty string
         // before the new message, ensuring screen readers re-read it.
@@ -313,16 +314,10 @@ export default function WalletStatus() {
       </Button>
 
       {/* Accessible status announcement */}
-      <div
-        className="sr-only"
-        role="status"
-        aria-live="polite"
-        data-testid="wallet-live-region"
-      >
-        {liveAnnouncement ||
-          (state === WALLET_STATES.CONNECTED
-            ? `Wallet connected. ${walletData?.address ? `Connected as ${walletData.address}.` : ""}`
-            : `Wallet status: ${state}${error ? `. Error: ${error}` : ""}`)}
+      <div className="sr-only" role="status" aria-live="polite">
+        {walletState === WALLET_STATES.CONNECTED
+          ? `Wallet connected. ${walletData?.address ? `Connected as ${walletData.address}.` : ""}`
+          : `Wallet status: ${walletState}${error ? `. Error: ${error}` : ""}`}
       </div>
     </div>
   );

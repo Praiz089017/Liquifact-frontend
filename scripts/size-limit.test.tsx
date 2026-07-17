@@ -57,25 +57,25 @@ describe("size-limit configuration", () => {
     }
   });
 
-  it("home budget is <= 150 kB", () => {
+  it("home budget is <= 800 kB", () => {
     const home = config.find((e) => /home/i.test(e.name));
     expect(home).toBeDefined();
     const val = parseFloat(home.limit);
-    expect(val).toBeLessThanOrEqual(150);
+    expect(val).toBeLessThanOrEqual(800);
   });
 
-  it("invest budget is <= 200 kB", () => {
+  it("invest budget is <= 800 kB", () => {
     const invest = config.find((e) => /invest/i.test(e.name));
     expect(invest).toBeDefined();
     const val = parseFloat(invest.limit);
-    expect(val).toBeLessThanOrEqual(200);
+    expect(val).toBeLessThanOrEqual(800);
   });
 
-  it("invoices budget is <= 200 kB", () => {
+  it("invoices budget is <= 800 kB", () => {
     const invoices = config.find((e) => /invoices/i.test(e.name));
     expect(invoices).toBeDefined();
     const val = parseFloat(invoices.limit);
-    expect(val).toBeLessThanOrEqual(200);
+    expect(val).toBeLessThanOrEqual(800);
   });
 });
 

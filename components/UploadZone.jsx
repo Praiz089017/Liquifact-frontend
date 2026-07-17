@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { env } from "../lib/config/env";
 import { copy } from "../app/copy/en";
 import { isPdfMagicValid, validatePdfFile, sanitizeFilename } from "../lib/validation/pdf";
+import { env } from "../lib/config/env";
 
 // Base URL for backend API; validated and centralized in lib/config/env.
 const API_URL = env.apiUrl;
@@ -73,7 +74,8 @@ function Spinner({ className = "" }) {
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
-      aria-hidden="true"
+      role="img"
+      aria-label="Loading"
     >
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
@@ -249,6 +251,7 @@ function UploadZone({ onUploadSuccess, progress }) {
             </span>
             <p
               className="font-medium text-emerald-400"
+              /* eslint-disable-next-line react/no-danger -- safe: filename is HTML-escaped by sanitizeFilename */
               dangerouslySetInnerHTML={{ __html: sanitizeFilename(file.name) }}
             />
             <p className="text-xs text-slate-500">

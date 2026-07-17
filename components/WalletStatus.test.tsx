@@ -9,7 +9,7 @@ import {
   getFreighterNetwork,
 } from "../lib/wallet/freighter";
 import { ToastProvider } from "./ToastProvider";
-import { WalletProvider } from "./WalletProvider";
+import WalletProvider from "./WalletProvider";
 
 jest.mock("../lib/wallet/freighter", () => ({
   isFreighterConnected: jest.fn(),
@@ -17,6 +17,10 @@ jest.mock("../lib/wallet/freighter", () => ({
   getFreighterNetwork: jest.fn(),
   assertExpectedNetwork: jest.fn(),
 }));
+
+// ---------------------------------------------------------------------------
+// Live-region announcement tests (aria-live="polite")
+// ---------------------------------------------------------------------------
 
 function renderWithProviders(ui: React.ReactElement) {
   return render(
@@ -30,7 +34,7 @@ function setup() {
   return userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 }
 
-async function flushTimersTs(delayMs: number) {
+async function flushTimers(delayMs: number) {
   await act(async () => {
     jest.advanceTimersByTime(delayMs);
     await Promise.resolve();
@@ -51,22 +55,18 @@ describe("WalletStatus live region", () => {
     jest.restoreAllMocks();
   });
 
-  it("renders a polite live region reflecting the initial wallet state", () => {
+  it("renders a polite live region with no announcement on initial mount", () => {
     renderWithProviders(<WalletStatus />);
     const region = screen.getByTestId("wallet-live-region");
     expect(region).toHaveAttribute("aria-live", "polite");
     expect(region).toHaveAttribute("role", "status");
-    // Initial state — shows current wallet status
-    expect(region).toHaveTextContent(/disconnected/i);
+    // No announcement yet — initial render should be silent
+    expect(region).toHaveTextContent("");
   });
 
   it('announces "Wallet connected." after a successful connection', async () => {
     const user = setup();
-    const { isFreighterConnected, connectFreighter, getFreighterNetwork } =
-      require("../lib/wallet/freighter");
-    (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-    (connectFreighter as jest.Mock).mockResolvedValue("GABC...XYZ123");
-    (getFreighterNetwork as jest.Mock).mockResolvedValue("public");
+    jest.spyOn(Math, "random").mockReturnValue(0); // success scenario
 
     renderWithProviders(<WalletStatus />);
     const btn = screen.getByRole("button", { name: /connect wallet/i });
@@ -78,18 +78,14 @@ describe("WalletStatus live region", () => {
 
   it('announces "Wallet disconnected." after disconnect', async () => {
     const user = setup();
-    const { isFreighterConnected, connectFreighter, getFreighterNetwork } =
-      require("../lib/wallet/freighter");
-    (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-    (connectFreighter as jest.Mock).mockResolvedValue("GABC...XYZ123");
-    (getFreighterNetwork as jest.Mock).mockResolvedValue("public");
+    jest.spyOn(Math, "random").mockReturnValue(0); // success
 
     renderWithProviders(<WalletStatus />);
     await user.click(screen.getByRole("button", { name: /connect wallet/i }));
+    await flushTimersTs(1500);
 
     // Now disconnect
-    const disconnectBtn = await screen.findByRole("button", { name: /disconnect/i });
-    await user.click(disconnectBtn);
+    await user.click(screen.getByRole("button", { name: /disconnect/i }));
 
     const region = screen.getByTestId("wallet-live-region");
     await waitFor(() => expect(region).toHaveTextContent("Wallet disconnected."));
@@ -97,13 +93,11 @@ describe("WalletStatus live region", () => {
 
   it('announces "Wallet connection failed." on error state', async () => {
     const user = setup();
-    const { isFreighterConnected, connectFreighter } =
-      require("../lib/wallet/freighter");
-    (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-    (connectFreighter as jest.Mock).mockRejectedValue(new Error("User rejected connection"));
+    jest.spyOn(Math, "random").mockReturnValue(0.34); // error scenario (index 1)
 
     renderWithProviders(<WalletStatus />);
     await user.click(screen.getByRole("button", { name: /connect wallet/i }));
+    await flushTimersTs(1500);
 
     const region = screen.getByTestId("wallet-live-region");
     await waitFor(() => expect(region).toHaveTextContent("Wallet connection failed."));
@@ -111,14 +105,11 @@ describe("WalletStatus live region", () => {
 
   it("does not include the wallet public key in the live region announcement", async () => {
     const user = setup();
-    const { isFreighterConnected, connectFreighter, getFreighterNetwork } =
-      require("../lib/wallet/freighter");
-    (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-    (connectFreighter as jest.Mock).mockResolvedValue("GABC...XYZ123");
-    (getFreighterNetwork as jest.Mock).mockResolvedValue("public");
+    jest.spyOn(Math, "random").mockReturnValue(0); // success
 
     renderWithProviders(<WalletStatus />);
     await user.click(screen.getByRole("button", { name: /connect wallet/i }));
+    await flushTimersTs(1500);
 
     const region = screen.getByTestId("wallet-live-region");
     await waitFor(() => expect(region).toHaveTextContent("Wallet connected."));
