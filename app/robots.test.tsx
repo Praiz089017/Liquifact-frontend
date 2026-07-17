@@ -1,11 +1,12 @@
 import robots from "./robots";
 
-describe("Robots", () => {
-  it("returns proper robots.txt content with default base URL", () => {
-    const config = robots();
-    expect(config.rules).toBeDefined();
-    expect(config.rules.userAgent).toBe("*");
-    expect(config.rules.allow).toBe("/");
-    expect(config.sitemap).toBe("http://localhost:3000/sitemap.xml");
+describe("Robots Route", () => {
+  it("returns proper robots meta", () => {
+    const result = robots();
+    expect(result.rules).toBeDefined();
+    expect(result.rules.userAgent).toBe("*");
+    expect(result.rules.allow).toBe("/");
+    // default base URL fallback
+    expect(result.sitemap).toContain("http://localhost:3000/sitemap.xml");
   });
 });

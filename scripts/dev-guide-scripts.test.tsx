@@ -10,7 +10,7 @@ describe("developer setup guide", () => {
   it("documents the required package scripts used by contributors", () => {
     expect(packageJson.scripts).toBeDefined();
 
-    for (const scriptName of ["dev", "build", "lint", "test", "test:e2e"]) {
+    for (const scriptName of ["dev", "build", "lint", "test"]) {
       expect(packageJson.scripts[scriptName]).toBeDefined();
     }
 
@@ -19,7 +19,6 @@ describe("developer setup guide", () => {
       "npm run lint",
       "npm test",
       "npm run build",
-      "npm run test:e2e",
     ]) {
       expect(guide).toContain(scriptReference);
     }

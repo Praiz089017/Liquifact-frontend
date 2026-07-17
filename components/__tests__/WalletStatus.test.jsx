@@ -1,22 +1,11 @@
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent, act, within } from "@testing-library/react";
+import { render, screen, fireEvent, act, within, waitFor } from "@testing-library/react";
 import WalletStatus, { WALLET_STATES } from "../WalletStatus";
 import { ToastProvider } from "../ToastProvider";
 import { WalletProvider } from "../WalletProvider";
+import * as freighter from "../../lib/wallet/freighter";
 
-jest.mock("../../lib/wallet/freighter", () => ({
-  isFreighterConnected: jest.fn(),
-  connectFreighter: jest.fn(),
-  getFreighterNetwork: jest.fn(),
-  assertExpectedNetwork: jest.fn(),
-}));
-
-import {
-  isFreighterConnected,
-  connectFreighter,
-  getFreighterNetwork,
-  assertExpectedNetwork,
-} from "../../lib/wallet/freighter";
+jest.mock("../../lib/wallet/freighter");
 
 function renderWalletStatus() {
   return render(
@@ -29,11 +18,12 @@ function renderWalletStatus() {
 }
 
 function getWalletStatusRegion() {
-  return screen.getAllByRole("status")[0];
+  return screen.getByTestId("wallet-live-region");
 }
 
 function getToastRegion() {
-  return screen.getAllByRole("status")[1];
+  const regions = screen.getAllByRole("status");
+  return regions[regions.length - 1];
 }
 
 beforeEach(() => {
@@ -64,7 +54,7 @@ describe("WalletStatus — initial (disconnected) state", () => {
 
 describe("WalletStatus — DISCONNECTED → CONNECTING transition", () => {
   it("transitions to connecting state immediately on click", () => {
-    isFreighterConnected.mockResolvedValue(true);
+    freighter.isFreighterConnected.mockResolvedValue(true);
 
     renderWalletStatus();
     fireEvent.click(screen.getByRole("button", { name: /connect wallet/i }));
@@ -74,10 +64,10 @@ describe("WalletStatus — DISCONNECTED → CONNECTING transition", () => {
 
 describe("WalletStatus — CONNECTING → CONNECTED (success path)", () => {
   async function connectSuccessfully() {
-    isFreighterConnected.mockResolvedValue(true);
-    connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
-    assertExpectedNetwork.mockResolvedValue(undefined);
-    getFreighterNetwork.mockResolvedValue("testnet");
+    freighter.isFreighterConnected.mockResolvedValue(true);
+    freighter.connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    freighter.assertExpectedNetwork.mockResolvedValue(undefined);
+    freighter.getFreighterNetwork.mockResolvedValue("testnet");
 
     renderWalletStatus();
     fireEvent.click(screen.getByRole("button", { name: /connect wallet/i }));
@@ -91,14 +81,16 @@ describe("WalletStatus — CONNECTING → CONNECTED (success path)", () => {
 
   it('shows "Disconnect" button after successful connection', async () => {
     await connectSuccessfully();
-    expect(screen.getByRole("button", { name: /disconnect/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /disconnect/i })).toBeInTheDocument();
+    });
   });
 });
 
 describe("WalletStatus — CONNECTING → ERROR (error path)", () => {
   async function connectWithError() {
-    isFreighterConnected.mockResolvedValue(true);
-    connectFreighter.mockRejectedValue(new Error("User rejected connection"));
+    freighter.isFreighterConnected.mockResolvedValue(true);
+    freighter.connectFreighter.mockRejectedValue(new Error("User rejected connection"));
 
     renderWalletStatus();
     const btn = screen.getByRole("button", { name: /connect wallet/i });
@@ -113,14 +105,18 @@ describe("WalletStatus — CONNECTING → ERROR (error path)", () => {
 
   it("shows error helper text", async () => {
     await connectWithError();
-    const helperText = screen.getByText(/User rejected connection/i, {
-      selector: "#wallet-helper-text",
+    await waitFor(() => {
+      const helperText = screen.getByText(/User rejected connection/i, {
+        selector: "#wallet-helper-text",
+      });
+      expect(helperText).toBeInTheDocument();
     });
-    expect(helperText).toBeInTheDocument();
   });
 
   it("fires an error toast on connection failure", async () => {
     await connectWithError();
-    expect(within(getToastRegion()).getByText(/failed/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(getToastRegion()).getByText(/Connection failed/i)).toBeInTheDocument();
+    });
   });
 });

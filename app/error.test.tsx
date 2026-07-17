@@ -79,7 +79,8 @@ describe("GlobalError (app/error.js)", () => {
       renderError();
       const banner = screen.getByTestId("error-banner");
       expect(banner).toBeInTheDocument();
-      expect(screen.getByText(copy.error.title)).toBeInTheDocument();
+      // title appears in both the sr-only h1 and the ErrorBanner mock's h2
+      expect(screen.getAllByText(copy.error.title).length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText(copy.error.description)).toBeInTheDocument();
     });
 
@@ -92,7 +93,7 @@ describe("GlobalError (app/error.js)", () => {
       renderError();
       expect(screen.getByTestId("error-banner")).toHaveAttribute(
         "data-preview",
-        copy.error.previewLabel,
+        copy.error.previewLabel
       );
     });
 

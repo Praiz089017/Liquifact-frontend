@@ -27,6 +27,8 @@ describe("InvoiceList", () => {
       },
     ];
 
+    const loader = jest.fn().mockResolvedValue(MOCK_TEST_INVOICES);
+
     render(<InvoiceList loadInvoices={loader} />);
 
     await waitFor(() => expect(screen.getByText("Test Supplier")).toBeInTheDocument());
@@ -42,7 +44,7 @@ describe("InvoiceList", () => {
 
     render(<InvoiceList loadInvoices={loader} />);
 
-    await waitFor(() => expect(screen.getByText(copy.invoices.emptyState)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(/Upload your first invoice/i).length).toBeGreaterThan(0));
   });
 
   it("renders ErrorBanner when loader rejects", async () => {

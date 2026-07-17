@@ -5,8 +5,6 @@ import { WalletProvider } from "../WalletProvider";
 import WalletStatus from "../WalletStatus";
 import { axe, toHaveNoViolations } from "jest-axe";
 
-expect.extend(toHaveNoViolations);
-
 test.skip("WalletStatus has no accessibility violations", async () => {
   const { container } = render(
     <ToastProvider>

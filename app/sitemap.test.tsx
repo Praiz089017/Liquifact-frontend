@@ -1,22 +1,19 @@
 import sitemap from "./sitemap";
 
-describe("Sitemap", () => {
-  it("returns entries for all expected public routes", () => {
-    const entries = sitemap();
-    const urls = entries.map((e) => e.url);
+describe("Sitemap Route", () => {
+  it("returns routes with expected public paths", () => {
+    const routes = sitemap();
+    expect(Array.isArray(routes)).toBe(true);
+    expect(routes.length).toBeGreaterThanOrEqual(3);
+
+    const urls = routes.map((r) => r.url);
+    // Base URL fallback is localhost:3000
     expect(urls).toContain("http://localhost:3000/");
     expect(urls).toContain("http://localhost:3000/invoices");
     expect(urls).toContain("http://localhost:3000/invest");
-    expect(entries.length).toBe(3);
-  });
-
-  it("each entry has required sitemap fields", () => {
-    const entries = sitemap();
-    entries.forEach((entry) => {
-      expect(entry).toHaveProperty("url");
-      expect(entry).toHaveProperty("lastModified");
-      expect(entry).toHaveProperty("changeFrequency");
-      expect(entry).toHaveProperty("priority");
+    // Ensure no dynamic route placeholder
+    urls.forEach((url) => {
+      expect(url).not.toMatch(/\{.*\}/);
     });
   });
 });

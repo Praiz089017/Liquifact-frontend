@@ -172,6 +172,32 @@ function mergeInvoices(optimisticInvoices, loadedInvoices) {
   return Array.from(mergedById.values());
 }
 
+/**
+ * Given a number of days until (-) or since (+) maturity, return the
+ * appropriate badge label and styling class.
+ * @param {number} days - Days until maturity (negative = overdue, 0 = today, positive = future)
+ * @returns {{ label: string, className: string }}
+ */
+export function getMaturityBadgeProps(days) {
+  if (days < 0) {
+    const abs = Math.abs(days);
+    return {
+      label: `Overdue by ${abs} day${abs === 1 ? "" : "s"}`,
+      className: "bg-red-500/10 text-red-200 ring-1 ring-red-400/20",
+    };
+  }
+  if (days === 0) {
+    return {
+      label: "Matures today",
+      className: "bg-yellow-500/10 text-yellow-200 ring-1 ring-yellow-400/20",
+    };
+  }
+  return {
+    label: `Matures in ${days} day${days === 1 ? "" : "s"}`,
+    className: "bg-slate-500/10 text-slate-200 ring-1 ring-slate-400/20",
+  };
+}
+
 export default function InvoiceList({ loadInvoices = loadMockInvoices, optimisticInvoices = [] }) {
   const [invoices, setInvoices] = useState(null);
   const [loadError, setLoadError] = useState("");

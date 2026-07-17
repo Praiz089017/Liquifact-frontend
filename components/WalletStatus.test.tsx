@@ -1,10 +1,18 @@
 import React from "react";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import WalletStatus from "./WalletStatus";
 import { WalletProvider } from "./WalletProvider";
 import { ToastProvider } from "./ToastProvider";
+
+// Mock freighter so WalletProvider.connect() works in tests
+jest.mock("../lib/wallet/freighter", () => ({
+  isFreighterConnected: jest.fn(),
+  connectFreighter: jest.fn(),
+  getFreighterNetwork: jest.fn(),
+  assertExpectedNetwork: jest.fn(),
+}));
 
 function renderWithProviders(ui: React.ReactElement) {
   return render(
@@ -48,6 +56,7 @@ describe("WalletStatus live region", () => {
     const region = screen.getByTestId("wallet-live-region");
     expect(region).toHaveAttribute("aria-live", "polite");
     expect(region).toHaveAttribute("role", "status");
+    // No announcement yet — initial render should be silent
     expect(region).toHaveTextContent("");
   });
 

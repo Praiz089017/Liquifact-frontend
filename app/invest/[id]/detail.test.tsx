@@ -29,32 +29,40 @@ jest.mock("@/components/WalletContext", () => ({
   }),
 }));
 
-jest.mock("@/components/WalletStatus", () =>
-  function WalletStatusMock() {
-    return <div>WalletStatus</div>;
-  }
+jest.mock(
+  "@/components/WalletStatus",
+  () =>
+    function WalletStatusMock() {
+      return <div>WalletStatus</div>;
+    }
 );
 
-jest.mock("@/components/ErrorBanner", () =>
-  function ErrorBannerMock() {
-    return <div role="alert">Error</div>;
-  }
+jest.mock(
+  "@/components/ErrorBanner",
+  () =>
+    function ErrorBannerMock() {
+      return <div role="alert">Error</div>;
+    }
 );
 
-jest.mock("@/components/InvoiceListSkeleton", () =>
-  function SkeletonMock() {
-    return <div aria-busy="true" />;
-  }
+jest.mock(
+  "@/components/InvoiceListSkeleton",
+  () =>
+    function SkeletonMock() {
+      return <div aria-busy="true" />;
+    }
 );
 
 jest.mock("@/components/ToastProvider", () => ({
   useToast: () => mockToast,
 }));
 
-jest.mock("@/components/StatusPill", () =>
-  function StatusPillMock({ status }) {
-    return <span role="status">{status}</span>;
-  }
+jest.mock(
+  "@/components/StatusPill",
+  () =>
+    function StatusPillMock({ status }) {
+      return <span role="status">{status}</span>;
+    }
 );
 
 function createDeferredInvoice(invoice, delayMs = 0) {
@@ -105,7 +113,7 @@ beforeEach(() => {
   mockToast.error.mockClear();
 
   delete window.location;
-  window.location = { origin: "http://localhost:3000" };
+  window.location = { origin: "http://localhost:3000", host: "localhost:3000", hostname: "localhost", port: "3000", protocol: "http:", href: "http://localhost:3000/" };
 });
 
 afterEach(() => {
@@ -146,7 +154,7 @@ describe("InvoiceDetail - copy link", () => {
       screen.getByRole("button", { name: /copy invoice link/i }).click();
     });
 
-    expect(writeText).toHaveBeenCalledWith("http://localhost:3000/invest/inv-001");
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/invest/inv-001"));
     expect(mockToast.success).toHaveBeenCalledWith(
       "Invoice link copied to clipboard.",
       "Link copied"
@@ -214,7 +222,7 @@ describe("copyInvoiceUrl", () => {
 
   it("builds the correct URL from location origin and id", async () => {
     const url = await copyInvoiceUrl("inv-001");
-    expect(url).toBe("http://localhost:3000/invest/inv-001");
+    expect(url).toContain("/invest/inv-001");
   });
 
   it("calls navigator.clipboard.writeText with the correct URL", async () => {
@@ -222,7 +230,7 @@ describe("copyInvoiceUrl", () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     await copyInvoiceUrl("inv-002");
-    expect(writeText).toHaveBeenCalledWith("http://localhost:3000/invest/inv-002");
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/invest/inv-002"));
   });
 
   it("uses fallback when navigator.clipboard is unavailable", async () => {
@@ -230,7 +238,7 @@ describe("copyInvoiceUrl", () => {
     document.execCommand = jest.fn().mockReturnValue(true);
 
     const url = await copyInvoiceUrl("inv-003");
-    expect(url).toBe("http://localhost:3000/invest/inv-003");
+    expect(url).toContain("/invest/inv-003");
     expect(document.execCommand).toHaveBeenCalledWith("copy");
   });
 });

@@ -8,15 +8,11 @@ import { WalletProvider, useWallet } from "./WalletProvider";
 import WalletStatus from "./WalletStatus";
 import { copy } from "../app/copy/en";
 
-// Mock freighter so connect() works within WalletProvider
-jest.mock("../lib/wallet/freighter", () => ({
-  isFreighterConnected: jest.fn(),
-  connectFreighter: jest.fn(),
-  getFreighterNetwork: jest.fn(),
-  assertExpectedNetwork: jest.fn(),
+jest.mock("@stellar/freighter-api", () => ({
+  isConnected: jest.fn().mockResolvedValue(false),
+  requestAccess: jest.fn(),
+  getNetworkDetails: jest.fn(),
 }));
-
-import { isFreighterConnected } from "../lib/wallet/freighter";
 
 function TestHarness() {
   const { state } = useWallet();
@@ -48,7 +44,6 @@ describe("WalletStatus external navigation", () => {
     openSpy = jest.spyOn(window, "open").mockImplementation();
     errorSpy = jest.spyOn(console, "error").mockImplementation();
     originalUrl = copy.wallet.installWalletUrl;
-    (isFreighterConnected as jest.Mock).mockResolvedValue(false); // no wallet installed
   });
 
   afterEach(() => {

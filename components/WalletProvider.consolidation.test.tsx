@@ -13,21 +13,9 @@
 import "@testing-library/jest-dom";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { ToastProvider } from "./ToastProvider";
+import * as freighter from "../lib/wallet/freighter";
 
-// Mock freighter so WalletProvider.connect() works in tests
-jest.mock("../lib/wallet/freighter", () => ({
-  isFreighterConnected: jest.fn(),
-  connectFreighter: jest.fn(),
-  getFreighterNetwork: jest.fn(),
-  assertExpectedNetwork: jest.fn(),
-}));
-
-import {
-  isFreighterConnected,
-  connectFreighter,
-  getFreighterNetwork,
-  assertExpectedNetwork,
-} from "../lib/wallet/freighter";
+jest.mock("../lib/wallet/freighter");
 
 // ── Canonical source ──────────────────────────────────────────────────────────
 import {
@@ -154,10 +142,10 @@ describe("WALLET_STATES contains all required states", () => {
 // ── 4. Toast side-effects fire on connection outcomes ─────────────────────────
 describe("Toast side-effects", () => {
   it("fires a success toast on successful connect", async () => {
-    (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-    (connectFreighter as jest.Mock).mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
-    (assertExpectedNetwork as jest.Mock).mockResolvedValue(undefined);
-    (getFreighterNetwork as jest.Mock).mockResolvedValue("testnet");
+    (freighter.isFreighterConnected as jest.Mock).mockResolvedValue(true);
+    (freighter.connectFreighter as jest.Mock).mockResolvedValue("GABC...XYZ123");
+    (freighter.assertExpectedNetwork as jest.Mock).mockResolvedValue(undefined);
+    (freighter.getFreighterNetwork as jest.Mock).mockResolvedValue("public");
 
     renderWithProviders();
 
@@ -175,8 +163,8 @@ describe("Toast side-effects", () => {
   });
 
   it("fires an error toast on connection failure", async () => {
-    (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-    (connectFreighter as jest.Mock).mockRejectedValue(new Error("User rejected connection"));
+    (freighter.isFreighterConnected as jest.Mock).mockResolvedValue(true);
+    (freighter.connectFreighter as jest.Mock).mockRejectedValue(new Error("User rejected connection"));
 
     renderWithProviders();
 
@@ -192,10 +180,10 @@ describe("Toast side-effects", () => {
   });
 
   it("fires an error toast on wrong network", async () => {
-    (isFreighterConnected as jest.Mock).mockResolvedValue(true);
-    (connectFreighter as jest.Mock).mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
-    (assertExpectedNetwork as jest.Mock).mockRejectedValue(
-      new Error('Wallet is on "public" but the app requires "testnet"')
+    (freighter.isFreighterConnected as jest.Mock).mockResolvedValue(true);
+    (freighter.connectFreighter as jest.Mock).mockResolvedValue("GABC...XYZ123");
+    (freighter.assertExpectedNetwork as jest.Mock).mockRejectedValue(
+      new Error("Wallet is on \"public\" but the app requires \"testnet\"")
     );
 
     renderWithProviders();
@@ -209,6 +197,22 @@ describe("Toast side-effects", () => {
     });
 
     expect(screen.getByText("Wrong network")).toBeInTheDocument();
+  });
+
+  it("fires an error toast on no_wallet", async () => {
+    (freighter.isFreighterConnected as jest.Mock).mockResolvedValue(false);
+
+    renderWithProviders();
+
+    await act(async () => {
+      screen.getByRole("button", { name: "Connect" }).click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("wallet-state")).toHaveTextContent("no_wallet");
+    });
+
+    expect(screen.getByText("No wallet")).toBeInTheDocument();
   });
 });
 

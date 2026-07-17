@@ -51,6 +51,24 @@ function createToast({ variant = "info", title, message }) {
   };
 }
 
+function canReceiveFocus(el) {
+  return (
+    el instanceof HTMLElement &&
+    typeof el.focus === "function" &&
+    !el.hasAttribute("disabled") &&
+    el.isConnected
+  );
+}
+
+function restoreFocusTo(el) {
+  if (!canReceiveFocus(el)) return;
+  queueMicrotask(() => {
+    if (canReceiveFocus(el)) {
+      el.focus();
+    }
+  });
+}
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const timers = useRef(new Map());
@@ -60,6 +78,10 @@ export function ToastProvider({ children }) {
   const preDismissFocusRef = useRef(null);
   // Ref to the toast container so we can detect focus moving outside it.
   const containerRef = useRef(null);
+  // Captures document.activeElement at the moment addToast is called. This is the
+  // fallback for document-level Escape handling, where focus never enters the toast
+  // (so onFocus never fires to populate preDismissFocusRef).
+  const addTimeFocusRef = useRef(null);
 
   const clearToastTimer = useCallback((id) => {
     const timeout = timers.current.get(id);
@@ -88,6 +110,13 @@ export function ToastProvider({ children }) {
 
   const addToast = useCallback(
     ({ variant, title, message }) => {
+      // Snapshot the currently focused element so document-level Escape can
+      // restore focus even when the toast never receives focus directly.
+      const activeEl = document.activeElement;
+      if (activeEl && activeEl !== document.body && canReceiveFocus(activeEl)) {
+        addTimeFocusRef.current = activeEl;
+      }
+
       const nextToast = createToast({ variant, title, message });
       const key = nextToast.key;
       let timerAction = null;
@@ -98,7 +127,10 @@ export function ToastProvider({ children }) {
         if (existingIndex !== -1) {
           const existingToast = current[existingIndex];
           timerAction = { type: "refresh", id: existingToast.id };
-          return current;
+          // Bump the existing toast to the front (newest position) so
+          // re-triggered messages appear at the top of the stack.
+          if (existingIndex === 0) return current;
+          return [existingToast, ...current.slice(0, existingIndex), ...current.slice(existingIndex + 1)];
         }
 
         if (current.length >= MAX_TOASTS) {
@@ -159,9 +191,10 @@ export function ToastProvider({ children }) {
 
   // Dismiss the toast and return focus to the element that was active before the
   // user tabbed into the toast region. This prevents focus from falling to <body>.
+  // Falls back to the element captured at addToast time for document-level Escape.
   const dismissAndReturnFocus = useCallback(
     (id) => {
-      const target = preDismissFocusRef.current;
+      const target = preDismissFocusRef.current || addTimeFocusRef.current;
       removeToast(id);
       // Restore focus after React has removed the toast from the DOM.
       if (target && typeof target.focus === "function") {
@@ -171,6 +204,28 @@ export function ToastProvider({ children }) {
     },
     [removeToast]
   );
+
+  // Document-level Escape listener so that pressing Escape dismisses the most
+  // recent toast regardless of where focus is (e.g. still on a trigger button or
+  // an unrelated input). The per-toast onKeyDown handles the case where the toast
+  // card itself is focused.
+  useEffect(() => {
+    if (toasts.length === 0) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      // Let the per-toast onKeyDown handle it when focus is inside the toast region.
+      if (containerRef.current?.contains(e.target)) return;
+      e.preventDefault();
+      const mostRecent = toasts[0];
+      if (mostRecent) {
+        dismissAndReturnFocus(mostRecent.id);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [toasts, dismissAndReturnFocus]);
 
   useEffect(() => {
     const currentTimers = timers.current;

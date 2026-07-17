@@ -1,24 +1,12 @@
 import "@testing-library/jest-dom";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ToastProvider } from "./ToastProvider";
 import { WalletProvider } from "./WalletProvider";
 import WalletStatus from "./WalletStatus";
+import * as freighter from "../lib/wallet/freighter";
 
-// Mock freighter so connect() works within WalletProvider
-jest.mock("../lib/wallet/freighter", () => ({
-  isFreighterConnected: jest.fn(),
-  connectFreighter: jest.fn(),
-  getFreighterNetwork: jest.fn(),
-  assertExpectedNetwork: jest.fn(),
-}));
-
-import {
-  isFreighterConnected,
-  connectFreighter,
-  getFreighterNetwork,
-  assertExpectedNetwork,
-} from "../lib/wallet/freighter";
+jest.mock("../lib/wallet/freighter");
 
 function setup() {
   return userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -30,13 +18,6 @@ function renderWithProviders(ui) {
       <WalletProvider>{ui}</WalletProvider>
     </ToastProvider>
   );
-}
-
-async function flushTimers(delayMs) {
-  await act(async () => {
-    jest.advanceTimersByTime(delayMs);
-    await Promise.resolve();
-  });
 }
 
 beforeEach(() => {
@@ -68,28 +49,26 @@ describe("WalletStatus", () => {
 
   it("shows a connecting state and then a successful connection", async () => {
     const user = setup();
-    isFreighterConnected.mockResolvedValue(true);
-    connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
-    assertExpectedNetwork.mockResolvedValue(undefined);
-    getFreighterNetwork.mockResolvedValue("testnet");
+    freighter.isFreighterConnected.mockResolvedValue(true);
+    freighter.connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    freighter.assertExpectedNetwork.mockResolvedValue(undefined);
+    freighter.getFreighterNetwork.mockResolvedValue("testnet");
 
     renderWithProviders(<WalletStatus />);
-    const button = screen.getByRole("button", { name: /connect wallet/i });
 
-    await user.click(button);
+    await user.click(screen.getByRole("button", { name: /connect wallet/i }));
 
     // Wait for connection to complete
     await screen.findByRole("button", { name: /disconnect/i });
-
     expect(screen.getByRole("button", { name: /disconnect/i })).toBeInTheDocument();
   });
 
   it("disconnects the wallet when the disconnect button is clicked", async () => {
     const user = setup();
-    isFreighterConnected.mockResolvedValue(true);
-    connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
-    assertExpectedNetwork.mockResolvedValue(undefined);
-    getFreighterNetwork.mockResolvedValue("testnet");
+    freighter.isFreighterConnected.mockResolvedValue(true);
+    freighter.connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    freighter.assertExpectedNetwork.mockResolvedValue(undefined);
+    freighter.getFreighterNetwork.mockResolvedValue("testnet");
 
     renderWithProviders(<WalletStatus />);
     await user.click(screen.getByRole("button", { name: /connect wallet/i }));
@@ -102,8 +81,8 @@ describe("WalletStatus", () => {
 
   it("shows an error state and allows retry", async () => {
     const user = setup();
-    isFreighterConnected.mockResolvedValue(true);
-    connectFreighter.mockRejectedValue(new Error("User rejected connection"));
+    freighter.isFreighterConnected.mockResolvedValue(true);
+    freighter.connectFreighter.mockRejectedValue(new Error("User rejected connection"));
 
     renderWithProviders(<WalletStatus />);
     await user.click(screen.getByRole("button", { name: /connect wallet/i }));
@@ -114,9 +93,9 @@ describe("WalletStatus", () => {
 
   it("shows a wrong network state and allows retry", async () => {
     const user = setup();
-    isFreighterConnected.mockResolvedValue(true);
-    connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
-    assertExpectedNetwork.mockRejectedValue(
+    freighter.isFreighterConnected.mockResolvedValue(true);
+    freighter.connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    freighter.assertExpectedNetwork.mockRejectedValue(
       new Error('Wallet is on "public" but the app requires "testnet"')
     );
 
@@ -130,7 +109,7 @@ describe("WalletStatus", () => {
   it("shows a no-wallet state and opens the wallet installation page", async () => {
     const user = setup();
     const openSpy = jest.spyOn(window, "open").mockImplementation(() => {});
-    isFreighterConnected.mockResolvedValue(false);
+    freighter.isFreighterConnected.mockResolvedValue(false);
 
     renderWithProviders(<WalletStatus />);
     await user.click(screen.getByRole("button", { name: /connect wallet/i }));

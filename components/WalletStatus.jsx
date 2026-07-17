@@ -29,8 +29,6 @@ function getTransitionAnnouncement(nextState) {
   }
 }
 
-// Wallet connection states — re-exported from WalletProvider for backward compatibility
-
 export default function WalletStatus() {
   const { state, walletData, error, connect, disconnect } = useWallet();
 
@@ -111,6 +109,8 @@ export default function WalletStatus() {
       prevStateRef.current = state;
       const msg = getTransitionAnnouncement(state);
       if (msg) {
+        // Briefly clear then set so the same message re-announces if the
+        // user toggles connect/disconnect repeatedly.
         setLiveAnnouncement("");
         Promise.resolve().then(() => setLiveAnnouncement(msg));
       }

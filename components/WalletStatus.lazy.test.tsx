@@ -51,12 +51,9 @@ jest.mock("next/dynamic", () => {
     DynamicWrapper.displayName = "DynamicWrapper";
     const SuspenseWrapper = (props) => {
       const inlineReact = require("react");
-      const fallback = options?.loading
-        ? inlineReact.createElement(options.loading, props)
-        : null;
       return inlineReact.createElement(
         inlineReact.Suspense,
-        { fallback },
+        { fallback: options?.loading ? inlineReact.createElement(options.loading, props) : null },
         inlineReact.createElement(DynamicWrapper, props)
       );
     };
@@ -84,18 +81,14 @@ jest.mock("./WalletProvider", () => {
   };
 });
 
-jest.mock("./ToastProvider", () => {
-  const actual = jest.requireActual("./ToastProvider");
-  return {
-    ...actual,
-    __esModule: true,
-    useToast: () => ({
-      success: jest.fn(),
-      error: jest.fn(),
-      info: jest.fn(),
-    }),
-  };
-});
+jest.mock("./ToastProvider", () => ({
+  ...jest.requireActual("./ToastProvider"),
+  useToast: () => ({
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+  }),
+}));
 
 // Import after mocks are set up
 import WalletStatusLazy from "./WalletStatusLazy";
