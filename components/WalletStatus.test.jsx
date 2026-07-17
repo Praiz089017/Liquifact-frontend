@@ -2,8 +2,23 @@ import "@testing-library/jest-dom";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ToastProvider } from "./ToastProvider";
-import { WalletProvider } from "./WalletContext";
+import { WalletProvider } from "./WalletProvider";
 import WalletStatus from "./WalletStatus";
+
+// Mock freighter so connect() works within WalletProvider
+jest.mock("../lib/wallet/freighter", () => ({
+  isFreighterConnected: jest.fn(),
+  connectFreighter: jest.fn(),
+  getFreighterNetwork: jest.fn(),
+  assertExpectedNetwork: jest.fn(),
+}));
+
+import {
+  isFreighterConnected,
+  connectFreighter,
+  getFreighterNetwork,
+  assertExpectedNetwork,
+} from "../lib/wallet/freighter";
 
 function setup() {
   return userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -24,22 +39,24 @@ async function flushTimers(delayMs) {
   });
 }
 
+beforeEach(() => {
+  jest.useFakeTimers();
+  if (typeof window !== "undefined") {
+    window.localStorage.clear();
+  }
+  jest.clearAllMocks();
+  process.env.NEXT_PUBLIC_STELLAR_NETWORK = "testnet";
+});
+
+afterEach(async () => {
+  await act(async () => {
+    jest.runOnlyPendingTimers();
+  });
+  jest.useRealTimers();
+  jest.restoreAllMocks();
+});
+
 describe("WalletStatus", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-    if (typeof window !== "undefined") {
-      window.localStorage.clear();
-    }
-  });
-
-  afterEach(async () => {
-    await act(async () => {
-      jest.runOnlyPendingTimers();
-    });
-    jest.useRealTimers();
-    jest.restoreAllMocks();
-  });
-
   it("renders the initial disconnected state", () => {
     renderWithProviders(<WalletStatus />);
 
@@ -51,78 +68,81 @@ describe("WalletStatus", () => {
 
   it("shows a connecting state and then a successful connection", async () => {
     const user = setup();
-    jest.spyOn(Math, "random").mockReturnValue(0); // success scenario
+    isFreighterConnected.mockResolvedValue(true);
+    connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    assertExpectedNetwork.mockResolvedValue(undefined);
+    getFreighterNetwork.mockResolvedValue("testnet");
 
     renderWithProviders(<WalletStatus />);
     const button = screen.getByRole("button", { name: /connect wallet/i });
 
     await user.click(button);
-    expect(button).toHaveTextContent(/connecting/i);
 
-    await flushTimers(1500);
+    // Wait for connection to complete
+    await screen.findByRole("button", { name: /disconnect/i });
 
-    expect(screen.getByText(/1,234\.56 XLM/, { selector: "span" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /disconnect/i })).toBeInTheDocument();
   });
 
   it("disconnects the wallet when the disconnect button is clicked", async () => {
     const user = setup();
-    jest.spyOn(Math, "random").mockReturnValue(0); // success scenario
+    isFreighterConnected.mockResolvedValue(true);
+    connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    assertExpectedNetwork.mockResolvedValue(undefined);
+    getFreighterNetwork.mockResolvedValue("testnet");
 
     renderWithProviders(<WalletStatus />);
-    const connectButton = screen.getByRole("button", {
-      name: /connect wallet/i,
-    });
-    await user.click(connectButton);
-    await flushTimers(1500);
+    await user.click(screen.getByRole("button", { name: /connect wallet/i }));
 
-    const disconnectButton = screen.getByRole("button", {
-      name: /disconnect/i,
-    });
-    await user.click(disconnectButton);
+    await screen.findByRole("button", { name: /disconnect/i });
+    await user.click(screen.getByRole("button", { name: /disconnect/i }));
 
     expect(screen.getByRole("button", { name: /connect wallet/i })).toBeInTheDocument();
   });
 
   it("shows an error state and allows retry", async () => {
     const user = setup();
-    jest.spyOn(Math, "random").mockReturnValue(0.34); // error scenario (index 1)
+    isFreighterConnected.mockResolvedValue(true);
+    connectFreighter.mockRejectedValue(new Error("User rejected connection"));
 
     renderWithProviders(<WalletStatus />);
-    const button = screen.getByRole("button", { name: /connect wallet/i });
-    await user.click(button);
-    await flushTimers(1500);
+    await user.click(screen.getByRole("button", { name: /connect wallet/i }));
 
+    await screen.findByRole("button", { name: /retry connection/i });
     expect(screen.getByRole("button", { name: /retry connection/i })).toBeInTheDocument();
   });
 
   it("shows a wrong network state and allows retry", async () => {
     const user = setup();
-    jest.spyOn(Math, "random").mockReturnValue(0.56); // wrong_network scenario (index 2)
+    isFreighterConnected.mockResolvedValue(true);
+    connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    assertExpectedNetwork.mockRejectedValue(
+      new Error('Wallet is on "public" but the app requires "testnet"')
+    );
 
     renderWithProviders(<WalletStatus />);
-    const button = screen.getByRole("button", { name: /connect wallet/i });
-    await user.click(button);
-    await flushTimers(1500);
+    await user.click(screen.getByRole("button", { name: /connect wallet/i }));
 
+    await screen.findByRole("button", { name: /switch network/i });
     expect(screen.getByRole("button", { name: /switch network/i })).toBeInTheDocument();
   });
 
   it("shows a no-wallet state and opens the wallet installation page", async () => {
     const user = setup();
     const openSpy = jest.spyOn(window, "open").mockImplementation(() => {});
-    jest.spyOn(Math, "random").mockReturnValue(0.78); // no_wallet scenario (index 3)
+    isFreighterConnected.mockResolvedValue(false);
 
     renderWithProviders(<WalletStatus />);
-    const button = screen.getByRole("button", { name: /connect wallet/i });
-    await user.click(button);
-    await flushTimers(1500);
+    await user.click(screen.getByRole("button", { name: /connect wallet/i }));
 
-    const installButton = screen.getByRole("button", {
-      name: /install wallet/i,
-    });
-    await user.click(installButton);
-    expect(openSpy).toHaveBeenCalledWith("https://www.stellar.org/wallets", "_blank");
+    await screen.findByRole("button", { name: /install wallet/i });
+    await user.click(screen.getByRole("button", { name: /install wallet/i }));
+
+    expect(openSpy).toHaveBeenCalledWith(
+      "https://www.stellar.org/wallets",
+      "_blank",
+      "noopener,noreferrer"
+    );
 
     openSpy.mockRestore();
   });

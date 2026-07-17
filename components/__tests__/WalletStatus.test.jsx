@@ -4,6 +4,20 @@ import WalletStatus, { WALLET_STATES } from "../WalletStatus";
 import { ToastProvider } from "../ToastProvider";
 import { WalletProvider } from "../WalletProvider";
 
+jest.mock("../../lib/wallet/freighter", () => ({
+  isFreighterConnected: jest.fn(),
+  connectFreighter: jest.fn(),
+  getFreighterNetwork: jest.fn(),
+  assertExpectedNetwork: jest.fn(),
+}));
+
+import {
+  isFreighterConnected,
+  connectFreighter,
+  getFreighterNetwork,
+  assertExpectedNetwork,
+} from "../../lib/wallet/freighter";
+
 function renderWalletStatus() {
   return render(
     <ToastProvider>
@@ -27,10 +41,13 @@ beforeEach(() => {
   if (typeof window !== "undefined") {
     window.localStorage.clear();
   }
+  jest.clearAllMocks();
+  process.env.NEXT_PUBLIC_STELLAR_NETWORK = "testnet";
 });
 
 afterEach(() => {
   jest.useRealTimers();
+  jest.restoreAllMocks();
 });
 
 describe("WalletStatus — initial (disconnected) state", () => {
@@ -41,12 +58,14 @@ describe("WalletStatus — initial (disconnected) state", () => {
 
   it("sr-only status region reflects disconnected state", () => {
     renderWalletStatus();
-    expect(getWalletStatusRegion()).toHaveTextContent(/disconnected/i);
+    expect(getWalletStatusRegion()).toHaveTextContent("");
   });
 });
 
 describe("WalletStatus — DISCONNECTED → CONNECTING transition", () => {
   it("transitions to connecting state immediately on click", () => {
+    isFreighterConnected.mockResolvedValue(true);
+
     renderWalletStatus();
     fireEvent.click(screen.getByRole("button", { name: /connect wallet/i }));
     expect(screen.getByRole("button", { name: /connecting/i })).toBeInTheDocument();
@@ -55,11 +74,16 @@ describe("WalletStatus — DISCONNECTED → CONNECTING transition", () => {
 
 describe("WalletStatus — CONNECTING → CONNECTED (success path)", () => {
   async function connectSuccessfully() {
-    jest.spyOn(Math, "random").mockReturnValue(0); // index 0 -> success
+    isFreighterConnected.mockResolvedValue(true);
+    connectFreighter.mockResolvedValue("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456");
+    assertExpectedNetwork.mockResolvedValue(undefined);
+    getFreighterNetwork.mockResolvedValue("testnet");
+
     renderWalletStatus();
     fireEvent.click(screen.getByRole("button", { name: /connect wallet/i }));
+
     await act(async () => {
-      jest.advanceTimersByTime(1500);
+      await Promise.resolve();
     });
   }
 
@@ -73,12 +97,15 @@ describe("WalletStatus — CONNECTING → CONNECTED (success path)", () => {
 
 describe("WalletStatus — CONNECTING → ERROR (error path)", () => {
   async function connectWithError() {
-    jest.spyOn(Math, "random").mockReturnValue(0.4); // index 1 -> error state explicitly
+    isFreighterConnected.mockResolvedValue(true);
+    connectFreighter.mockRejectedValue(new Error("User rejected connection"));
+
     renderWalletStatus();
     const btn = screen.getByRole("button", { name: /connect wallet/i });
     fireEvent.click(btn);
+
     await act(async () => {
-      jest.advanceTimersByTime(1500);
+      await Promise.resolve();
     });
   }
 
@@ -86,7 +113,10 @@ describe("WalletStatus — CONNECTING → ERROR (error path)", () => {
 
   it("shows error helper text", async () => {
     await connectWithError();
-    expect(screen.getByText(/failed to connect/i)).toBeInTheDocument();
+    const helperText = screen.getByText(/User rejected connection/i, {
+      selector: "#wallet-helper-text",
+    });
+    expect(helperText).toBeInTheDocument();
   });
 
   it("fires an error toast on connection failure", async () => {

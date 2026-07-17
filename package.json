@@ -20,7 +20,7 @@
     "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.1",
+    "@babel/core": "^7.26.0",
     "@jest/test-sequencer": "^30.4.1",
     "@playwright/test": "^1.60.0",
     "@size-limit/file": "^12.1.0",
