@@ -691,7 +691,7 @@ describe("InvestMarketplace", () => {
     expect(screen.getByRole("status")).toHaveTextContent("1 of 2 invoices match");
   });
 
-  it.skip("filters invoices by issuer search query after debounce (search disabled in current UI — pointer-events-none fieldset)", async () => {
+  it("filters invoices by issuer search query after debounce", async () => {
     const invoices = [
       {
         id: "inv-001",
@@ -730,6 +730,216 @@ describe("InvestMarketplace", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
     expect(screen.getByText("Acme Supplies Ltd")).toBeInTheDocument();
     expect(screen.queryByText("Bright Logistics GmbH")).not.toBeInTheDocument();
+  });
+
+  it("search is case-insensitive — lowercase query matches mixed-case issuer", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "BRIGHT" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByText("Bright Logistics GmbH")).toBeInTheDocument();
+    expect(screen.queryByText("Acme Supplies Ltd")).not.toBeInTheDocument();
+  });
+
+  it("shows no-match state when search query matches no invoices", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "nonexistent" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    expect(screen.queryByRole("list", { name: /investable invoices/i })).not.toBeInTheDocument();
+    expect(screen.getByText("No invoices match your filters.")).toBeInTheDocument();
+  });
+
+  it("restores full list when search query is cleared", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    // Apply a search filter
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "acme" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+
+    // Clear the search filter
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.getByText("Acme Supplies Ltd")).toBeInTheDocument();
+    expect(screen.getByText("Bright Logistics GmbH")).toBeInTheDocument();
+  });
+
+  it("announces search-filtered count in the live region", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
+      {
+        id: "inv-003",
+        issuer: "Acme Trading Co",
+        amount: "300",
+        currency: "USD",
+        dueDate: "2026-08-01",
+        yield: "7%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    expect(screen.getByRole("status")).toHaveTextContent("3 investable invoices loaded");
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "acme" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    // 2 of 3 invoices match "acme" (Acme Supplies Ltd and Acme Trading Co)
+    expect(screen.getByRole("status")).toHaveTextContent("2 of 3 invoices match");
+  });
+
+  it("announces no-match when search produces zero results", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "zzznomatch" },
+    });
+    await flushTimers(SEARCH_DEBOUNCE_MS);
+
+    expect(screen.getByRole("status")).toHaveTextContent("No invoices match");
+  });
+
+  it("search does not filter before debounce delay elapses", async () => {
+    const invoices = [
+      {
+        id: "inv-001",
+        issuer: "Acme Supplies Ltd",
+        amount: "100",
+        currency: "USD",
+        dueDate: "2026-06-15",
+        yield: "5%",
+        status: "Open",
+      },
+      {
+        id: "inv-002",
+        issuer: "Bright Logistics GmbH",
+        amount: "200",
+        currency: "EUR",
+        dueDate: "2026-07-01",
+        yield: "6%",
+        status: "Open",
+      },
+    ];
+
+    render(<InvestMarketplace loadInvoices={createDeferredLoader(invoices, 0)} />);
+    await flushTimers(0);
+
+    fireEvent.change(screen.getByLabelText("Search by issuer name"), {
+      target: { value: "acme" },
+    });
+
+    // Advance less than debounce threshold — list should still be unfiltered
+    await flushTimers(SEARCH_DEBOUNCE_MS - 50);
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+
+    // Now cross the threshold — filtering should kick in
+    await flushTimers(50);
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
   });
 
   it("announces filtered results in the live region when search is applied", async () => {

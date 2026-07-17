@@ -118,7 +118,6 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   const [invoices, setInvoices] = useState(null); // null = loading
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
@@ -152,7 +151,6 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
   const reload = useCallback(() => {
     setInvoices(null);
     setLoadError("");
-    setStatusMessage("");
     setRetryKey((k) => k + 1);
   }, []);
 
@@ -224,7 +222,6 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
 
         setInvoices(null);
         setLoadError(copy.invest.errorDescription);
-        setStatusMessage(copy.invest.errorStatus);
       }
     };
 
@@ -237,25 +234,30 @@ export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
     // retryKey triggers a fresh load on retry without changing loadInvoices.
   }, [loadInvoices, retryKey]);
 
-  // Update the live-region status whenever the filtered list or visible count changes.
-  useEffect(() => {
-    if (!Array.isArray(invoices)) return;
-    if (filterActive) {
-      setStatusMessage(
-        getInvoiceLoadAnnouncement(invoices, {
-          filterActive: true,
-          filteredCount: filteredInvoices.length,
-        })
-      );
-    } else if (visibleCount < filteredInvoices.length) {
-      setStatusMessage(getPaginationAnnouncement(visibleCount, filteredInvoices.length));
-    } else if (visibleCount > PAGE_SIZE) {
-      // After Load more brings us to the last page, announce pagination format
-      setStatusMessage(getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length));
-    } else {
-      setStatusMessage(getInvoiceLoadAnnouncement(invoices));
+  // Derive the polite live-region announcement directly from reactive state.
+  // Using useMemo (rather than a useEffect + setState) avoids a cascading
+  // re-render and satisfies the react-hooks/set-state-in-effect lint rule.
+  const statusMessage = useMemo(() => {
+    // Loading or error states — error copy is announced by the ErrorBanner role="alert";
+    // the status region is cleared so screen readers only hear one announcement.
+    if (!Array.isArray(invoices)) {
+      return loadError ? copy.invest.errorStatus : "";
     }
-  }, [filteredInvoices, filterActive, invoices, visibleCount]);
+    if (filterActive) {
+      return getInvoiceLoadAnnouncement(invoices, {
+        filterActive: true,
+        filteredCount: filteredInvoices.length,
+      });
+    }
+    if (visibleCount < filteredInvoices.length) {
+      return getPaginationAnnouncement(visibleCount, filteredInvoices.length);
+    }
+    if (visibleCount > PAGE_SIZE) {
+      // After Load more reaches the last page, keep pagination format.
+      return getPaginationAnnouncement(filteredInvoices.length, filteredInvoices.length);
+    }
+    return getInvoiceLoadAnnouncement(invoices);
+  }, [filteredInvoices, filterActive, invoices, visibleCount, loadError]);
 
   // ── Load-more handler ──────────────────────────────────────────────────────
   /**
