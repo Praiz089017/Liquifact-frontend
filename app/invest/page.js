@@ -10,7 +10,8 @@ import InvoiceSearch from "@/components/InvoiceSearch";
 import InvoiceFilters, { DEFAULT_FILTERS } from "@/components/InvoiceFilters";
 import Pagination from "@/components/Pagination";
 import { copy } from "../copy/en";
-import { fetchInvestableInvoices } from "../../lib/api/invoices";
+// Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
+import { loadMockInvoices } from "./lib";
 
 export const PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
@@ -111,7 +112,7 @@ export function applySortToList(list, filters) {
  *   invoice array.  Defaults to the mock loader; injectable for testing.
  * @returns {JSX.Element}
  */
-export function InvestMarketplace({ loadInvoices = fetchInvestableInvoices }) {
+export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
   const searchParams = useSearchParams();
   const searchParamsValue = searchParams ?? new URLSearchParams();
 

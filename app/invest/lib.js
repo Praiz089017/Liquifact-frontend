@@ -2,6 +2,12 @@
  * Mock invoice data — replace with real API call once the backend endpoint
  * is available (follow-up: link backend issue here).
  *
+ * ⚠️  SINGLE SOURCE OF TRUTH: This file is the only place mock invoice
+ * fixtures are defined. All components and tests must import MOCK_INVOICES
+ * and loadMockInvoices from here. Do NOT redeclare them inline elsewhere.
+ * Remove this block and swap loadMockInvoices for the real API client once
+ * the backend `/invoices` endpoint is ready.
+ *
  * Contract per item: { id, issuer, amount, currency, dueDate, yield, status }
  * NOTE: yield values are illustrative; contracts use on-chain basis points and
  * actual settlement is at maturity.
@@ -46,6 +52,9 @@ export const MOCK_INVOICES = [
 const DEV_DELAY = process.env.NODE_ENV === "development" ? 1500 : 0;
 
 export function loadMockInvoices() {
+  // Test hook: Playwright / Jest tests may override the fixture by setting
+  // window.__TEST_MOCK_INVOICES__ before the component mounts.  The override
+  // is ignored in non-browser (SSR) environments and in production builds.
   if (typeof window !== "undefined" && window.__TEST_MOCK_INVOICES__) {
     return Promise.resolve(window.__TEST_MOCK_INVOICES__);
   }

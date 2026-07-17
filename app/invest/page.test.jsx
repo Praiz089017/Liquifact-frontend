@@ -9,40 +9,6 @@ import InvestPage, {
 } from "./page";
 import { getInvoiceById, loadMockInvoices, MOCK_INVOICES } from "./lib";
 
-jest.mock("../../lib/api/invoices", () => ({
-  fetchInvestableInvoices: jest.fn(() =>
-    Promise.resolve([
-      {
-        id: "inv-001",
-        issuer: "Acme Supplies Ltd",
-        amount: "12,500",
-        currency: "USD",
-        dueDate: "2026-06-15",
-        yield: "8.2%",
-        status: "Open",
-      },
-      {
-        id: "inv-002",
-        issuer: "Bright Logistics GmbH",
-        amount: "7,800",
-        currency: "EUR",
-        dueDate: "2026-07-01",
-        yield: "7.5%",
-        status: "Open",
-      },
-      {
-        id: "inv-003",
-        issuer: "Sunrise Exports Pte",
-        amount: "22,000",
-        currency: "USD",
-        dueDate: "2026-05-30",
-        yield: "9.1%",
-        status: "Open",
-      },
-    ])
-  ),
-}));
-
 jest.mock("next/link", () => {
   function MockLink({ href, children, ...props }) {
     return (
@@ -933,11 +899,92 @@ describe("InvestPage", () => {
   });
 
   it("renders the marketplace page via the default export", async () => {
+    // InvestPage renders InvestMarketplace whose default loadInvoices is
+    // loadMockInvoices from lib.js — no prop injection needed here.
     render(<InvestPage />);
     await flushTimers(0);
 
     expect(screen.getByRole("heading", { name: /invest/i })).toBeInTheDocument();
-    expect(getInvoiceListItems()).toHaveLength(3);
+    expect(getInvoiceListItems()).toHaveLength(MOCK_INVOICES.length);
+  });
+});
+
+// ── Shared fixture tests (Issue #422) ─────────────────────────────────────────
+// These tests assert that the marketplace renders directly from the MOCK_INVOICES
+// array exported by lib.js, confirming that lib.js is the single source of truth.
+
+describe("InvestMarketplace renders from shared lib.js fixture", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it("renders one list item per entry in MOCK_INVOICES when using loadMockInvoices", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    const items = getInvoiceListItems();
+    expect(items).toHaveLength(MOCK_INVOICES.length);
+  });
+
+  it("renders each issuer name from the shared MOCK_INVOICES fixture", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    for (const invoice of MOCK_INVOICES) {
+      expect(screen.getByText(invoice.issuer)).toBeInTheDocument();
+    }
+  });
+
+  it("announces the correct invoice count based on MOCK_INVOICES length", async () => {
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `${MOCK_INVOICES.length} investable invoices loaded`
+    );
+  });
+
+  it("window.__TEST_MOCK_INVOICES__ override is honoured by loadMockInvoices", async () => {
+    const overrideInvoices = [
+      {
+        id: "test-inv-001",
+        issuer: "Override Corp",
+        amount: "999",
+        currency: "USD",
+        dueDate: "2027-01-01",
+        yield: "1.0%",
+        status: "Open",
+      },
+    ];
+
+    // Set the test hook that loadMockInvoices checks before falling back to MOCK_INVOICES.
+    window.__TEST_MOCK_INVOICES__ = overrideInvoices;
+
+    render(<InvestMarketplace loadInvoices={loadMockInvoices} />);
+    await flushTimers(0);
+
+    expect(getInvoiceListItems()).toHaveLength(1);
+    expect(screen.getByText("Override Corp")).toBeInTheDocument();
+
+    delete window.__TEST_MOCK_INVOICES__;
+  });
+
+  it("getInvoiceById resolves against the same MOCK_INVOICES fixture used by the marketplace", async () => {
+    // Confirm the detail-route helper and the marketplace list share the same array.
+    for (const invoice of MOCK_INVOICES) {
+      expect(getInvoiceById(invoice.id)).toStrictEqual(invoice);
+    }
+  });
+
+  it("getInvoiceById returns undefined for an id that does not exist in the shared fixture", () => {
+    expect(getInvoiceById("inv-not-in-fixture")).toBeUndefined();
   });
 });
 
