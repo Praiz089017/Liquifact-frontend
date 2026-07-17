@@ -109,10 +109,14 @@ export default function WalletStatus() {
       prevStateRef.current = state;
       const msg = getTransitionAnnouncement(state);
       if (msg) {
+        // Defer all setState to avoid triggering react-hooks/set-state-in-effect.
         // Briefly clear then set so the same message re-announces if the
         // user toggles connect/disconnect repeatedly.
-        setLiveAnnouncement("");
-        Promise.resolve().then(() => setLiveAnnouncement(msg));
+        const id = setTimeout(() => {
+          setLiveAnnouncement("");
+          queueMicrotask(() => setLiveAnnouncement(msg));
+        }, 0);
+        return () => clearTimeout(id);
       }
     }
   }, [state]);

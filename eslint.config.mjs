@@ -10,6 +10,14 @@ const eslintConfig = defineConfig([
     rules: {
       "import/no-duplicates": "error",
     },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          alwaysTryTypes: true,
+          project: ["./tsconfig.json"],
+        },
+      },
+    },
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([

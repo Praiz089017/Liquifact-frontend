@@ -250,7 +250,6 @@ function UploadZone({ onUploadSuccess, progress }) {
             </span>
             <p
               className="font-medium text-emerald-400"
-              /* eslint-disable-next-line react/no-danger -- safe: filename is HTML-escaped by sanitizeFilename */
               dangerouslySetInnerHTML={{ __html: sanitizeFilename(file.name) }}
             />
             <p className="text-xs text-slate-500">

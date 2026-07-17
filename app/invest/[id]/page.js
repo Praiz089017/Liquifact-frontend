@@ -183,13 +183,11 @@ export function InvoiceDetail({ loadInvoice = loadInvoiceById }) {
 
       <main className="max-w-4xl mx-auto px-6 py-12">
         {invoiceJsonLd ? (
-          /* eslint-disable react/no-danger -- safe: JSON.stringify output of structured data, no user content */
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{ __html: JSON.stringify(invoiceJsonLd) }}
           />
-        ) : /* eslint-enable react/no-danger */
-        null}
+        ) : null}
         <Link
           href="/invest"
           className="no-print inline-block mb-6 text-sm text-slate-400 hover:text-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 rounded"

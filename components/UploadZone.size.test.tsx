@@ -1,7 +1,6 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import UploadZone, { FILE_CONSTRAINTS } from "./UploadZone";
-import { isPdfMagicValid } from "../lib/validation/pdf";
 
 // Mock the fetch API
 globalThis.fetch = jest.fn();
