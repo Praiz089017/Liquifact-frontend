@@ -170,7 +170,9 @@ describe("Home Page – health-check abort on unmount", () => {
     render(<Home />);
     fireEvent.click(screen.getByRole("button", { name: /check backend health/i }));
 
-    await waitFor(() => expect(screen.getAllByText(/backend is healthy/i).length).toBeGreaterThanOrEqual(1));
+    await waitFor(() =>
+      expect(screen.getAllByText(/backend is healthy/i).length).toBeGreaterThanOrEqual(1)
+    );
 
     expect(screen.getAllByText(/connected/i).length).toBeGreaterThanOrEqual(1);
   });

@@ -14,12 +14,7 @@ describe("developer setup guide", () => {
       expect(packageJson.scripts[scriptName]).toBeDefined();
     }
 
-    for (const scriptReference of [
-      "npm run dev",
-      "npm run lint",
-      "npm test",
-      "npm run build",
-    ]) {
+    for (const scriptReference of ["npm run dev", "npm run lint", "npm test", "npm run build"]) {
       expect(guide).toContain(scriptReference);
     }
   });

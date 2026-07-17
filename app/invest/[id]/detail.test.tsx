@@ -113,7 +113,14 @@ beforeEach(() => {
   mockToast.error.mockClear();
 
   delete window.location;
-  window.location = { origin: "http://localhost:3000", host: "localhost:3000", hostname: "localhost", port: "3000", protocol: "http:", href: "http://localhost:3000/" };
+  window.location = {
+    origin: "http://localhost:3000",
+    host: "localhost:3000",
+    hostname: "localhost",
+    port: "3000",
+    protocol: "http:",
+    href: "http://localhost:3000/",
+  };
 });
 
 afterEach(() => {

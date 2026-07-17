@@ -164,7 +164,9 @@ describe("Toast side-effects", () => {
 
   it("fires an error toast on connection failure", async () => {
     (freighter.isFreighterConnected as jest.Mock).mockResolvedValue(true);
-    (freighter.connectFreighter as jest.Mock).mockRejectedValue(new Error("User rejected connection"));
+    (freighter.connectFreighter as jest.Mock).mockRejectedValue(
+      new Error("User rejected connection")
+    );
 
     renderWithProviders();
 
@@ -183,7 +185,7 @@ describe("Toast side-effects", () => {
     (freighter.isFreighterConnected as jest.Mock).mockResolvedValue(true);
     (freighter.connectFreighter as jest.Mock).mockResolvedValue("GABC...XYZ123");
     (freighter.assertExpectedNetwork as jest.Mock).mockRejectedValue(
-      new Error("Wallet is on \"public\" but the app requires \"testnet\"")
+      new Error('Wallet is on "public" but the app requires "testnet"')
     );
 
     renderWithProviders();

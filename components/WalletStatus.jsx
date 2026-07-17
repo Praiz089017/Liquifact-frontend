@@ -164,8 +164,7 @@ export default function WalletStatus() {
               ? "bg-green-500"
               : state === WALLET_STATES.CONNECTING
                 ? "bg-yellow-500 animate-pulse"
-                : state === WALLET_STATES.ERROR ||
-                    state === WALLET_STATES.WRONG_NETWORK
+                : state === WALLET_STATES.ERROR || state === WALLET_STATES.WRONG_NETWORK
                   ? "bg-red-500"
                   : "bg-slate-600"
           }`}
@@ -175,18 +174,11 @@ export default function WalletStatus() {
         {/* Address or helper text */}
         {config.showAddress && walletData ? (
           <div className="flex flex-col">
-            <span className="font-mono text-sm text-slate-300">
-              {walletData.address}
-            </span>
-            <span className="text-xs text-slate-500">
-              {walletData.balance}
-            </span>
+            <span className="font-mono text-sm text-slate-300">{walletData.address}</span>
+            <span className="text-xs text-slate-500">{walletData.balance}</span>
           </div>
         ) : (
-          <span
-            id="wallet-helper-text"
-            className="max-w-xs text-xs text-slate-400"
-          >
+          <span id="wallet-helper-text" className="max-w-xs text-xs text-slate-400">
             {config.helperText}
           </span>
         )}
@@ -206,12 +198,7 @@ export default function WalletStatus() {
       </Button>
 
       {/* Accessible live region for state announcements */}
-      <div
-        className="sr-only"
-        role="status"
-        aria-live="polite"
-        data-testid="wallet-live-region"
-      >
+      <div className="sr-only" role="status" aria-live="polite" data-testid="wallet-live-region">
         {liveAnnouncement}
       </div>
     </div>

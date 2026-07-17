@@ -41,10 +41,7 @@ describe("InvoiceListSkeleton", () => {
 
   it("has descriptive aria-label", () => {
     render(<InvoiceListSkeleton />);
-    expect(screen.getByRole("list")).toHaveAttribute(
-      "aria-label",
-      "Loading investable invoices"
-    );
+    expect(screen.getByRole("list")).toHaveAttribute("aria-label", "Loading investable invoices");
   });
 
   it("each row has animate-pulse class", () => {

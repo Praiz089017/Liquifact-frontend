@@ -6,7 +6,12 @@ import { useSearchParams } from "next/navigation";
 import ErrorBanner from "@/components/ErrorBanner";
 import InvoiceListSkeleton from "@/components/InvoiceListSkeleton";
 import InvoiceSearch from "@/components/InvoiceSearch";
-import InvoiceFilters, { DEFAULT_FILTERS, StatusLegendFilter, hasAnyActiveFilters, parseSortState } from "@/components/InvoiceFilters";
+import InvoiceFilters, {
+  DEFAULT_FILTERS,
+  StatusLegendFilter,
+  hasAnyActiveFilters,
+  parseSortState,
+} from "@/components/InvoiceFilters";
 import Pagination from "@/components/Pagination";
 import { copy } from "../copy/en";
 import { fetchInvestableInvoices } from "../../lib/api/invoices";

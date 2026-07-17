@@ -208,7 +208,10 @@ describe("DirectionToggle in InvoiceFilters", () => {
           onClearFilters={() => {}}
         />
       );
-      expect(screen.getByLabelText("Sort amount ascending")).toHaveAttribute("aria-label", "Sort amount ascending");
+      expect(screen.getByLabelText("Sort amount ascending")).toHaveAttribute(
+        "aria-label",
+        "Sort amount ascending"
+      );
     });
 
     it('shows \"Sort amount descending\" when amount column active and dir=asc', () => {
@@ -219,7 +222,10 @@ describe("DirectionToggle in InvoiceFilters", () => {
           onClearFilters={() => {}}
         />
       );
-      expect(screen.getByLabelText("Sort amount descending")).toHaveAttribute("aria-label", "Sort amount descending");
+      expect(screen.getByLabelText("Sort amount descending")).toHaveAttribute(
+        "aria-label",
+        "Sort amount descending"
+      );
     });
 
     it('shows \"Sort yield ascending\" when yield column active and dir=desc', () => {
@@ -230,10 +236,13 @@ describe("DirectionToggle in InvoiceFilters", () => {
           onClearFilters={() => {}}
         />
       );
-      expect(screen.getByLabelText("Sort yield ascending")).toHaveAttribute("aria-label", "Sort yield ascending");
+      expect(screen.getByLabelText("Sort yield ascending")).toHaveAttribute(
+        "aria-label",
+        "Sort yield ascending"
+      );
     });
 
-    it('shows direction label on inactive column toggle', () => {
+    it("shows direction label on inactive column toggle", () => {
       render(
         <InvoiceFilters
           filters={filtersWith({ sort: "amount", sortDir: "desc" })}
@@ -241,13 +250,19 @@ describe("DirectionToggle in InvoiceFilters", () => {
           onClearFilters={() => {}}
         />
       );
-      expect(screen.getByLabelText("Sort yield direction")).toHaveAttribute("aria-label", "Sort yield direction");
+      expect(screen.getByLabelText("Sort yield direction")).toHaveAttribute(
+        "aria-label",
+        "Sort yield direction"
+      );
     });
 
-    it('shows direction labels on all toggles when no column selected', () => {
+    it("shows direction labels on all toggles when no column selected", () => {
       render(<InvoiceFilters filters={BASE} onFilterChange={() => {}} onClearFilters={() => {}} />);
       SORTABLE_COLUMNS.forEach((col) => {
-        expect(screen.getByLabelText(`Sort ${col} direction`)).toHaveAttribute("aria-label", `Sort ${col} direction`);
+        expect(screen.getByLabelText(`Sort ${col} direction`)).toHaveAttribute(
+          "aria-label",
+          `Sort ${col} direction`
+        );
       });
     });
   });
