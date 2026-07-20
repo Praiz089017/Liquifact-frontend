@@ -82,31 +82,57 @@ Displays a structured error message with a variant label, title, description, op
 
 ### Props
 
-| Prop           | Type       | Default          | Description                                             |
-| -------------- | ---------- | ---------------- | ------------------------------------------------------- |
-| `variant`      | `string`   | `"server"`       | `"server"` or `"validation"` — controls the label shown |
-| `title`        | `string`   | —                | Bold heading for the error                              |
-| `description`  | `string`   | —                | Short explanatory text                                  |
-| `details`      | `string`   | —                | Optional secondary detail text                          |
-| `actionLabel`  | `string`   | —                | Button label; omit to hide the action button            |
-| `onAction`     | `function` | —                | Callback when the action button is clicked              |
-| `previewLabel` | `string`   | `"Preview only"` | Badge text shown next to the variant label              |
+| Prop           | Type       | Default          | Description                                                                          |
+| -------------- | ---------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `variant`      | `string`   | `"server"`       | Controls the label shown above the title. See **Variant set** below.                 |
+| `title`        | `string`   | —                | Bold heading for the error                                                           |
+| `description`  | `string`   | —                | Short explanatory text                                                               |
+| `details`      | `string`   | —                | Optional secondary detail text rendered below the description                        |
+| `actionLabel`  | `string`   | —                | Label rendered inside the action button; omit (or pass `undefined`) to hide the button |
+| `onAction`     | `function` | —                | Callback fired when the action button is clicked                                     |
+| `previewLabel` | `string`   | `"Preview only"` | Badge text shown next to the variant label                                           |
+
+### Variant set
+
+| `variant` value | Label displayed    | When to use                                                      |
+| --------------- | ------------------ | ---------------------------------------------------------------- |
+| `"server"`      | `Server error`     | API or network errors — the server could not fulfil the request  |
+| `"validation"`  | `Validation error` | Form / input errors — the request was invalid before it was sent |
+| `"error"`       | `Error`            | General client-side errors that are not specifically server or validation errors (e.g. an invoice that cannot be resolved) |
+| _(any other)_   | `Server error`     | Unknown variants fall back to the `server` label                 |
 
 ### Accessibility
 
 - Renders with `role="alert"` and `aria-live="assertive"` so screen readers announce errors immediately.
-- Action button includes `focus:ring` for keyboard visibility.
+- The action button's accessible name is derived directly from `actionLabel` — pass a descriptive label (e.g. `"Try again"`, `"Reload page"`) rather than a generic `"Click here"`.
+- Action button includes a `focus-visible` ring for keyboard visibility.
 
 ### Example
 
 ```jsx
+// Server error with retry action
 <ErrorBanner
   variant="server"
   title="Could not load invoices"
   description="The API returned an unexpected error."
   details="Status 500 — please try again."
-  actionLabel="Retry"
+  actionLabel="Try again"
   onAction={() => refetch()}
+/>
+
+// Validation error without action
+<ErrorBanner
+  variant="validation"
+  title="Invalid file"
+  description="Only PDF files are accepted."
+/>
+
+// General client-side error (e.g. invoice not found)
+<ErrorBanner
+  variant="error"
+  title="Unable to load invoice details"
+  description="Could not retrieve this invoice."
+  previewLabel="Invoice detail"
 />
 ```
 
