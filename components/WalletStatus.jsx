@@ -29,105 +29,119 @@ function getTransitionAnnouncement(nextState) {
   }
 }
 
+/**
+ * Maps the current wallet state to a configuration object that drives the
+ * Button's appearance and the surrounding helper text.
+ *
+ * Key mapping contract:
+ *   - `buttonVariant` → forwarded directly as `variant` to <Button>.
+ *     Must be one of the valid Button variants: "primary" | "secondary" |
+ *     "warning" | "external" | "danger". The "loading" string is NOT a valid
+ *     Button variant — the loading spinner is handled separately via the
+ *     `loading` prop (derived from `state === WALLET_STATES.CONNECTING`).
+ *   - `buttonText`    → rendered as the Button's child text and aria-label.
+ *   - `helperText`    → displayed in the `#wallet-helper-text` span beneath
+ *     the status dot, and referenced by the Button's aria-describedby (only
+ *     when the address is not shown, i.e., when the span is present in the DOM).
+ *   - `disabled`      → forwarded as `disabled` to <Button>; true while
+ *     connecting so the user cannot click mid-flight.
+ *   - `showAddress`   → when true, display walletData.address/balance instead
+ *     of helperText. The `#wallet-helper-text` span is NOT rendered in this
+ *     case so aria-describedby must be omitted.
+ *
+ * @param {string} currentState - One of the WALLET_STATES values.
+ * @param {{ network?: string } | null} walletData - Current wallet data.
+ * @param {string | null} error - Current wallet error message, if any.
+ * @returns {{
+ *   buttonText: string,
+ *   buttonVariant: 'primary'|'secondary'|'warning'|'external'|'danger',
+ *   helperText: string,
+ *   disabled: boolean,
+ *   showAddress: boolean,
+ * }}
+ */
+function getStateConfig(currentState, walletData, error) {
+  switch (currentState) {
+    case WALLET_STATES.DISCONNECTED:
+      return {
+        buttonText: copy.wallet.connectButton,
+        // Primary action: use "primary" variant (cyan).
+        buttonVariant: "primary",
+        helperText: copy.wallet.helperDisconnected,
+        disabled: false,
+        showAddress: false,
+      };
+
+    case WALLET_STATES.CONNECTING:
+      return {
+        buttonText: copy.wallet.connectingButton,
+        // "loading" is NOT a Button variant. Use "primary" here and rely on
+        // `loading={state === WALLET_STATES.CONNECTING}` to render the Spinner
+        // and set aria-busy on the button element.
+        buttonVariant: "primary",
+        helperText: copy.wallet.helperConnecting,
+        disabled: true,
+        showAddress: false,
+      };
+
+    case WALLET_STATES.CONNECTED:
+      return {
+        buttonText: copy.wallet.disconnectButton,
+        buttonVariant: "secondary",
+        helperText: copy.wallet.helperConnected.replace(
+          "{network}",
+          walletData?.network || "public"
+        ),
+        disabled: false,
+        // Address/balance row replaces helper text — the #wallet-helper-text
+        // span is not rendered in this state, so aria-describedby is omitted.
+        showAddress: true,
+      };
+
+    case WALLET_STATES.ERROR:
+      return {
+        buttonText: copy.wallet.retryButton,
+        buttonVariant: "primary",
+        helperText: error || copy.wallet.helperError,
+        disabled: false,
+        showAddress: false,
+      };
+
+    case WALLET_STATES.WRONG_NETWORK:
+      return {
+        buttonText: copy.wallet.switchNetworkButton,
+        buttonVariant: "warning",
+        helperText: error || copy.wallet.helperWrongNetwork,
+        disabled: false,
+        showAddress: false,
+      };
+
+    case WALLET_STATES.NO_WALLET:
+      return {
+        buttonText: copy.wallet.installWalletButton,
+        buttonVariant: "external",
+        helperText: copy.wallet.helperNoWallet,
+        disabled: false,
+        showAddress: false,
+      };
+
+    default:
+      return getStateConfig(WALLET_STATES.DISCONNECTED, walletData, error);
+  }
+}
+
 export default function WalletStatus() {
   const { state, walletData, error, connect, disconnect } = useWallet();
 
   /**
-   * Maps each WALLET_STATE to the Button props and display config for that state.
+   * Derive the Button props from the current wallet state.
    *
-   * Config-to-prop mapping:
-   *   config.buttonVariant → <Button variant={config.buttonVariant}>
-   *     - "primary"   : DISCONNECTED / ERROR  — cyan, invites the user to act
-   *     - "loading"   : CONNECTING (internal; Button receives loading=true instead)
-   *     - "secondary" : CONNECTED             — muted, destructive-ish (disconnect)
-   *     - "warning"   : WRONG_NETWORK         — amber, user needs to switch network
-   *     - "external"  : NO_WALLET             — violet, opens an external install URL
-   *
-   *   loading derived separately: state === WALLET_STATES.CONNECTING
-   *     → passed as <Button loading={…}> which renders a Spinner and sets aria-busy
-   *
-   *   config.disabled → <Button disabled={config.disabled}>
-   *     - true only during CONNECTING (button is inert while the async flow runs)
-   *
-   * @param {string} currentState - One of the WALLET_STATES values.
-   * @returns {{ buttonText: string, buttonVariant: string, helperText: string, disabled: boolean, showAddress: boolean }}
+   * `buttonVariant` maps directly to <Button variant={...}>.
+   * The `loading` prop is derived separately: it is true only while connecting
+   * so Button renders its own Spinner and sets aria-busy automatically.
+   * No inline spinner SVG is needed here.
    */
-  const getStateConfig = (currentState) => {
-    switch (currentState) {
-      case WALLET_STATES.DISCONNECTED:
-        return {
-          buttonText: copy.wallet.connectButton,
-          // primary variant: cyan CTA, invites connection
-          buttonVariant: "primary",
-          helperText: copy.wallet.helperDisconnected,
-          disabled: false,
-          showAddress: false,
-        };
-
-      case WALLET_STATES.CONNECTING:
-        return {
-          buttonText: copy.wallet.connectingButton,
-          // primary variant kept; loading=true (derived below) adds Spinner + aria-busy
-          buttonVariant: "primary",
-          helperText: copy.wallet.helperConnecting,
-          disabled: true,
-          showAddress: false,
-        };
-
-      case WALLET_STATES.CONNECTED:
-        return {
-          buttonText: copy.wallet.disconnectButton,
-          // secondary variant: muted style signals a destructive (disconnect) action
-          buttonVariant: "secondary",
-          helperText: copy.wallet.helperConnected.replace(
-            "{network}",
-            walletData?.network || "public"
-          ),
-          disabled: false,
-          showAddress: true,
-        };
-
-      case WALLET_STATES.ERROR:
-        return {
-          buttonText: copy.wallet.retryButton,
-          // primary variant: re-invites connection after failure
-          buttonVariant: "primary",
-          helperText: error || copy.wallet.helperError,
-          disabled: false,
-          showAddress: false,
-        };
-
-      case WALLET_STATES.WRONG_NETWORK:
-        return {
-          buttonText: copy.wallet.switchNetworkButton,
-          // warning variant: amber alert, user must switch network
-          buttonVariant: "warning",
-          helperText: error || copy.wallet.helperWrongNetwork,
-          disabled: false,
-          showAddress: false,
-        };
-
-      case WALLET_STATES.NO_WALLET:
-        return {
-          buttonText: copy.wallet.installWalletButton,
-          // external variant: violet, opens trusted install URL in new tab
-          buttonVariant: "external",
-          helperText: copy.wallet.helperNoWallet,
-          disabled: false,
-          showAddress: false,
-        };
-
-      default:
-        return getStateConfig(WALLET_STATES.DISCONNECTED);
-    }
-  };
-
-  /**
-   * Resolved display config for the current wallet state.
-   * buttonVariant → <Button variant={config.buttonVariant}>
-   * loading       → derived as state === WALLET_STATES.CONNECTING
-   */
-  const config = getStateConfig(state);
+  const config = getStateConfig(state, walletData, error);
 
   // Track state transitions to announce them once via the polite live region.
   const prevStateRef = useRef(state);
@@ -183,6 +197,11 @@ export default function WalletStatus() {
     }
   };
 
+  // The #wallet-helper-text span is only present when showAddress is false.
+  // aria-describedby must only reference an element that exists in the DOM —
+  // omit it when the connected address row is shown instead.
+  const helperTextId = config.showAddress ? undefined : "wallet-helper-text";
+
   return (
     <div className="flex items-center gap-4">
       {/* Wallet state indicator + information */}
@@ -214,14 +233,29 @@ export default function WalletStatus() {
         )}
       </div>
 
-      {/* Wallet action */}
+      {/*
+       * Wallet action button.
+       *
+       * variant={config.buttonVariant}
+       *   Drives visual style. Always a valid Button variant string:
+       *   "primary" | "secondary" | "warning" | "external" | "danger".
+       *
+       * loading={state === WALLET_STATES.CONNECTING}
+       *   Renders Button's built-in Spinner, sets aria-busy="true" on the
+       *   <button> element, and disables interaction — no inline SVG needed.
+       *
+       * aria-describedby={helperTextId}
+       *   Only set when the #wallet-helper-text span is present in the DOM
+       *   (i.e. when showAddress is false). Omitted when the connected address
+       *   row is displayed to avoid dangling IDREF references.
+       */}
       <Button
         variant={config.buttonVariant}
         loading={state === WALLET_STATES.CONNECTING}
         disabled={config.disabled}
         onClick={handleClick}
         aria-label={config.buttonText}
-        aria-describedby="wallet-helper-text"
+        aria-describedby={helperTextId}
         className="focus-visible:outline-2 cursor-pointer focus-visible:outline-cyan-400 focus-visible:outline-offset-2"
       >
         {config.buttonText}

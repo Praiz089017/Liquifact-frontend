@@ -322,6 +322,12 @@ See COMPONENTS.md for the full component library reference — props, accessibil
   | NO_WALLET      | `external`      | Violet — opens install URL             |
 
 - **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar (`role="progressbar"`) is displayed. If no `progress` is supplied, it falls back to an indeterminate spinner. Smooth transitions are disabled when `prefers-reduced-motion` is active.
+- **WalletStatus button variant alignment** (fix: `refactor/wallet-02-fix-button-config`): `WalletStatus` now passes `variant={config.buttonVariant}` and `loading={state === WALLET_STATES.CONNECTING}` correctly to `Button`. The previous `getStateConfig` returned `buttonVariant: "loading"` for the connecting state — but `"loading"` is not a valid `Button` variant (`primary | secondary | warning | external | danger`), which caused `variantStyles["loading"]` to be `undefined` and silently broke the button's className. The fix:
+  - CONNECTING state now uses `buttonVariant: "primary"` (the loading spinner is rendered by `Button` via `loading={true}` and `aria-busy="true"`).
+  - `getStateConfig` is extracted to module scope with `walletData` and `error` as explicit parameters.
+  - `aria-describedby` on the wallet button is omitted when the connected address row is displayed (the `#wallet-helper-text` span is absent in that state, so the attribute would be a dangling IDREF reference).
+  - No inline spinner SVG is needed in `WalletStatus` — `Button`'s built-in `Spinner` handles it.
+
 
 ## Invoice List
 
@@ -765,6 +771,12 @@ We welcome UI improvements, new pages (e.g. invoice upload, marketplace), and St
 See [COMPONENTS.md](COMPONENTS.md) for the full component library reference — props, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletProvider`, `WalletStatus`).
 
 - **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar (`role="progressbar"`) is displayed. If no `progress` is supplied, it falls back to an indeterminate spinner. Smooth transitions are disabled when `prefers-reduced-motion` is active.
+- **WalletStatus button variant alignment** (fix: `refactor/wallet-02-fix-button-config`): `WalletStatus` now passes `variant={config.buttonVariant}` and `loading={state === WALLET_STATES.CONNECTING}` correctly to `Button`. The previous `getStateConfig` returned `buttonVariant: "loading"` for the connecting state — but `"loading"` is not a valid `Button` variant (`primary | secondary | warning | external | danger`), which caused `variantStyles["loading"]` to be `undefined` and silently broke the button's className. The fix:
+  - CONNECTING state now uses `buttonVariant: "primary"` (the loading spinner is rendered by `Button` via `loading={true}` and `aria-busy="true"`).
+  - `getStateConfig` is extracted to module scope with `walletData` and `error` as explicit parameters.
+  - `aria-describedby` on the wallet button is omitted when the connected address row is displayed (the `#wallet-helper-text` span is absent in that state, so the attribute would be a dangling IDREF reference).
+  - No inline spinner SVG is needed in `WalletStatus` — `Button`'s built-in `Spinner` handles it.
+
 
 ## Invoice List
 
