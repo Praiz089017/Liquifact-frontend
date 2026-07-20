@@ -13,6 +13,7 @@ import InvoiceFilters, {
   parseSortState,
 } from "@/components/InvoiceFilters";
 import Pagination from "@/components/Pagination";
+import NavMenu from "@/components/NavMenu";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
 import { loadMockInvoices } from "./lib";
