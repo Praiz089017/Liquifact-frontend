@@ -15,7 +15,7 @@
   "dependencies": {
     "@next/swc-wasm-nodejs": "^16.2.10",
     "@stellar/freighter-api": "^6.0.1",
-    "enhanced-resolve": "^5.24.2",
+    "enhanced-resolve": "^5.24.3",
     "next": "16.2.9",
     "react": "18.2.0",
     "react-dom": "18.2.0"
