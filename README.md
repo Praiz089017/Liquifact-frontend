@@ -310,6 +310,17 @@ We welcome UI improvements, new pages (e.g., invoice upload, marketplace), and S
 
 See COMPONENTS.md for the full component library reference — props, accessibility notes, and usage examples for every shared component (`ErrorBanner`, `Footer`, `InvoiceListSkeleton`, `ToastProvider`, `UploadZone`, `WalletProvider`, `WalletStatus`).
 
+- **WalletStatus Button variants**: `WalletStatus` delegates all button rendering to the shared `Button` component. `getStateConfig` returns a `buttonVariant` key that maps directly to `<Button variant={config.buttonVariant}>`. The `loading` prop is derived independently (`state === WALLET_STATES.CONNECTING`) so `Button` can render its own `Spinner` and set `aria-busy`. The mapping is:
+
+  | Wallet state   | `buttonVariant` | Visual signal                          |
+  | -------------- | --------------- | -------------------------------------- |
+  | DISCONNECTED   | `primary`       | Cyan CTA — invites connection          |
+  | CONNECTING     | `primary`       | Cyan + spinner via `loading=true`      |
+  | CONNECTED      | `secondary`     | Muted — signals destructive disconnect |
+  | ERROR          | `primary`       | Cyan — re-invites retry                |
+  | WRONG_NETWORK  | `warning`       | Amber — user must switch network       |
+  | NO_WALLET      | `external`      | Violet — opens install URL             |
+
 - **UploadZone Progress Indicator**: During the upload phase, if a `progress` prop (number between `0` and `100`) is supplied to `UploadZone`, a determinate progress bar (`role="progressbar"`) is displayed. If no `progress` is supplied, it falls back to an indeterminate spinner. Smooth transitions are disabled when `prefers-reduced-motion` is active.
 
 ## Invoice List

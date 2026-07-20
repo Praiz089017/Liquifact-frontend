@@ -32,12 +32,32 @@ function getTransitionAnnouncement(nextState) {
 export default function WalletStatus() {
   const { state, walletData, error, connect, disconnect } = useWallet();
 
-  // State config based on current wallet state
+  /**
+   * Maps each WALLET_STATE to the Button props and display config for that state.
+   *
+   * Config-to-prop mapping:
+   *   config.buttonVariant → <Button variant={config.buttonVariant}>
+   *     - "primary"   : DISCONNECTED / ERROR  — cyan, invites the user to act
+   *     - "loading"   : CONNECTING (internal; Button receives loading=true instead)
+   *     - "secondary" : CONNECTED             — muted, destructive-ish (disconnect)
+   *     - "warning"   : WRONG_NETWORK         — amber, user needs to switch network
+   *     - "external"  : NO_WALLET             — violet, opens an external install URL
+   *
+   *   loading derived separately: state === WALLET_STATES.CONNECTING
+   *     → passed as <Button loading={…}> which renders a Spinner and sets aria-busy
+   *
+   *   config.disabled → <Button disabled={config.disabled}>
+   *     - true only during CONNECTING (button is inert while the async flow runs)
+   *
+   * @param {string} currentState - One of the WALLET_STATES values.
+   * @returns {{ buttonText: string, buttonVariant: string, helperText: string, disabled: boolean, showAddress: boolean }}
+   */
   const getStateConfig = (currentState) => {
     switch (currentState) {
       case WALLET_STATES.DISCONNECTED:
         return {
           buttonText: copy.wallet.connectButton,
+          // primary variant: cyan CTA, invites connection
           buttonVariant: "primary",
           helperText: copy.wallet.helperDisconnected,
           disabled: false,
@@ -47,7 +67,8 @@ export default function WalletStatus() {
       case WALLET_STATES.CONNECTING:
         return {
           buttonText: copy.wallet.connectingButton,
-          buttonVariant: "loading",
+          // primary variant kept; loading=true (derived below) adds Spinner + aria-busy
+          buttonVariant: "primary",
           helperText: copy.wallet.helperConnecting,
           disabled: true,
           showAddress: false,
@@ -56,6 +77,7 @@ export default function WalletStatus() {
       case WALLET_STATES.CONNECTED:
         return {
           buttonText: copy.wallet.disconnectButton,
+          // secondary variant: muted style signals a destructive (disconnect) action
           buttonVariant: "secondary",
           helperText: copy.wallet.helperConnected.replace(
             "{network}",
@@ -68,6 +90,7 @@ export default function WalletStatus() {
       case WALLET_STATES.ERROR:
         return {
           buttonText: copy.wallet.retryButton,
+          // primary variant: re-invites connection after failure
           buttonVariant: "primary",
           helperText: error || copy.wallet.helperError,
           disabled: false,
@@ -77,6 +100,7 @@ export default function WalletStatus() {
       case WALLET_STATES.WRONG_NETWORK:
         return {
           buttonText: copy.wallet.switchNetworkButton,
+          // warning variant: amber alert, user must switch network
           buttonVariant: "warning",
           helperText: error || copy.wallet.helperWrongNetwork,
           disabled: false,
@@ -86,6 +110,7 @@ export default function WalletStatus() {
       case WALLET_STATES.NO_WALLET:
         return {
           buttonText: copy.wallet.installWalletButton,
+          // external variant: violet, opens trusted install URL in new tab
           buttonVariant: "external",
           helperText: copy.wallet.helperNoWallet,
           disabled: false,
@@ -97,6 +122,11 @@ export default function WalletStatus() {
     }
   };
 
+  /**
+   * Resolved display config for the current wallet state.
+   * buttonVariant → <Button variant={config.buttonVariant}>
+   * loading       → derived as state === WALLET_STATES.CONNECTING
+   */
   const config = getStateConfig(state);
 
   // Track state transitions to announce them once via the polite live region.
