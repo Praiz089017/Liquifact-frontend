@@ -84,6 +84,8 @@
  * @property {string} uploadZone.errorReadFailed
  * @property {string} uploadZone.errorUploadFailed
  * @property {string} uploadZone.errorUploadStatus
+ * @property {string} uploadZone.resetAction
+ * @property {string} uploadZone.resetAriaLabel
  * @property {Object} wallet - Wallet copy
  * @property {string} wallet.connectButton
  * @property {string} wallet.connectingButton
@@ -229,6 +231,9 @@ export const copy = {
     errorReadFailed: "Unable to read file. Please try again.",
     errorUploadFailed: "Upload failed. Please try again.",
     errorUploadStatus: "Upload failed ({status})",
+    resetAction: "Upload another invoice",
+    resetAriaLabel: "Upload another invoice \u2014 clears current upload and starts fresh",
+
   },
   wallet: {
     connectButton: "Connect Wallet",
