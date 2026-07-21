@@ -74,7 +74,7 @@ function Spinner({ className = "" }) {
       fill="none"
       viewBox="0 0 24 24"
       role="img"
-      aria-label="Loading"
+      aria-label={copy.uploadZone.spinnerLabel}
     >
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
@@ -104,16 +104,18 @@ function UploadZone({ onUploadSuccess, progress }) {
   const [status, setStatus] = useState("idle");
 
   function validate(f) {
-    if (!f) return "No file selected.";
+    if (!f) return copy.uploadZone.errorNoFile;
     if (f.type !== FILE_CONSTRAINTS.mimeType) {
-      return `Invalid file type "${f.type || "unknown"}". Only PDF files are accepted.`;
+      return copy.uploadZone.errorInvalidType.replace("{type}", f.type || "unknown");
     }
     if (f.size > FILE_CONSTRAINTS.maxSizeBytes) {
       const sizeMb = (f.size / 1024 / 1024).toFixed(1);
-      return `File is ${sizeMb} MB — exceeds the ${FILE_CONSTRAINTS.maxSizeMb} MB limit.`;
+      return copy.uploadZone.errorOversize
+        .replace("{sizeMb}", sizeMb)
+        .replace("{maxSizeMb}", FILE_CONSTRAINTS.maxSizeMb);
     }
     if (f.size === 0) {
-      return "File is empty (0 bytes). Please select a valid PDF file.";
+      return copy.uploadZone.errorEmpty;
     }
     return null;
   }
@@ -133,11 +135,11 @@ function UploadZone({ onUploadSuccess, progress }) {
     try {
       const validation = await validatePdfFile(f);
       if (!validation.valid) {
-        setError(validation.reason || "The selected file does not appear to be a valid PDF.");
+        setError(validation.reason || copy.uploadZone.errorInvalidPdf);
         setFile(null);
       }
     } catch (e) {
-      setError("Unable to read file. Please try again.");
+      setError(copy.uploadZone.errorReadFailed);
       setFile(null);
     }
   }
@@ -170,7 +172,7 @@ function UploadZone({ onUploadSuccess, progress }) {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || `Upload failed (${res.status})`);
+        throw new Error(data.message || copy.uploadZone.errorUploadStatus.replace("{status}", res.status));
       }
 
       setStatus("tokenizing");
@@ -191,7 +193,7 @@ function UploadZone({ onUploadSuccess, progress }) {
         });
       }
     } catch (err) {
-      setError(err.message || "Upload failed. Please try again.");
+      setError(err.message || copy.uploadZone.errorUploadFailed);
       setStatus("idle");
     }
   }

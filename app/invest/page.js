@@ -32,22 +32,26 @@ export const SEARCH_DEBOUNCE_MS = 300;
  */
 export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCount } = {}) {
   if (!Array.isArray(invoices) || invoices.length === 0) {
-    return "No invoices available";
+    return copy.invest.announceNoInvoices;
   }
 
   if (filterActive) {
     if (filteredCount === 0) {
-      return "No invoices match";
+      return copy.invest.announceNoMatch;
     }
-    return `${filteredCount} of ${invoices.length} invoices match`;
+    return copy.invest.announceFilteredCount
+      .replace("{matched}", filteredCount)
+      .replace("{total}", invoices.length);
   }
 
-  return `${invoices.length} investable invoices loaded`;
+  return copy.invest.announceInvoicesLoaded.replace("{count}", invoices.length);
 }
 
 export function getPaginationAnnouncement(shown, total) {
-  if (total === 0) return "No invoices available";
-  return `Showing ${shown} of ${total} investable invoices`;
+  if (total === 0) return copy.invest.announceNoInvoices;
+  return copy.invest.announceShowing
+    .replace("{shown}", shown)
+    .replace("{total}", total);
 }
 
 /**
@@ -319,11 +323,8 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           {statusMessage}
         </div>
 
-        <h1 className="text-2xl font-bold mb-2">Invest</h1>
-        <p className="text-slate-400 mb-8">
-          Browse tokenized invoices and fund them. Estimated yield is shown for educational
-          purposes; actual payment is received at invoice maturity.
-        </p>
+        <h1 className="text-2xl font-bold mb-2">{copy.invest.title}</h1>
+        <p className="text-slate-400 mb-8">{copy.invest.subtext}</p>
 
         {/*
           ACCESSIBILITY DESIGN (Issue #91):
@@ -340,7 +341,7 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           <InvoiceSearch
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search by issuer name"
+            aria-label={copy.invest.searchPlaceholder}
           />
         </div>
 
@@ -356,12 +357,12 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           aria-disabled="true"
           aria-describedby="filters-coming-soon"
         >
-          <legend className="sr-only">Marketplace Filters</legend>
+          <legend className="sr-only">{copy.invest.filterLegend}</legend>
           <div
             id="filters-coming-soon"
             className="mb-4 inline-block rounded bg-slate-800 px-2 py-1 text-xs font-semibold tracking-wide text-slate-300"
           >
-            Soon: These filter controls are currently unavailable.
+            {copy.invest.filterSoonLabel}
           </div>
           <div className="flex flex-wrap gap-4 items-center opacity-60 pointer-events-none">
             {/* InvoiceFilters only — search moved above */}
@@ -378,22 +379,22 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
           <ErrorBanner
             title={copy.invest.errorTitle}
             description={loadError}
-            actionLabel="Try again"
+            actionLabel={copy.invest.retryAction}
             onAction={reload}
           />
         ) : invoices === null ? (
           <InvoiceListSkeleton rows={3} />
         ) : invoices.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
-            No investable invoices. Connect wallet to see the marketplace.
+            {copy.invest.emptyState}
           </div>
         ) : filteredInvoices.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-500">
-            No invoices match your filters.
+            {copy.invest.noMatchFilter}
           </div>
         ) : (
           <>
-            <ul aria-label="Investable invoices" className="space-y-4">
+            <ul aria-label={copy.invest.listAriaLabel} className="space-y-4">
               {filteredInvoices.slice(0, visibleCount).map((inv) => (
                 <li key={inv.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
                   <div className="flex items-center justify-between mb-3">
@@ -411,8 +412,8 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                     <span>
                       {inv.currency}&nbsp;{inv.amount}
                     </span>
-                    <span>Est. yield&nbsp;{inv.yield}</span>
-                    <span>Maturity&nbsp;{inv.dueDate}</span>
+                    <span>{copy.invest.labelYield}{inv.yield}</span>
+                    <span>{copy.invest.labelMaturity}{inv.dueDate}</span>
                   </div>
                 </li>
               ))}
@@ -422,15 +423,14 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                 ref={loadMoreRef}
                 type="button"
                 onClick={handleLoadMore}
-                aria-label="Load more invoices"
+                aria-label={copy.invest.loadMoreAriaLabel}
                 className="mt-6 w-full rounded-xl border border-slate-700 bg-slate-900/30 py-3 text-sm text-cyan-400 hover:bg-slate-800/50"
               >
-                Load more
+                {copy.invest.loadMore}
               </button>
             )}
             <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/30 p-4 text-sm text-slate-400">
-              Note: Yield references are educational only and reflect on-chain basis-point
-              assumptions. Invoice contracts settle at maturity.
+              {copy.invest.yieldDisclaimer}
             </div>
           </>
         )}

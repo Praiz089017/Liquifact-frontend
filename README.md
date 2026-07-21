@@ -175,6 +175,28 @@ LiquiFact ships three App Router boundary files that replace Next.js's default p
 
 All user-visible strings live in `app/copy/en.js`. To change wording, update the relevant key under `copy.error`, `copy.notFound`, or `copy.globalError` — never inline strings directly in the boundary files.
 
+### i18n / Copy Convention
+
+All user-facing strings are externalised into a single typed dictionary at `app/copy/en.js`. This ensures:
+
+- **Single source of truth** — every visible string has a canonical key, making copy edits and future localisation straightforward.
+- **Typed shape** — the dictionary is documented with a `@typedef` JSDoc comment describing every top-level namespace and its string keys, so missing keys are caught during code review.
+- **No inline strings** — components and pages must import `copy` from `app/copy/en` and reference keys rather than hard-coding user-visible text.
+
+**Convention checklist when adding new UI:**
+
+1. Add every user-visible string to `app/copy/en.js` under the appropriate namespace (`invest`, `wallet`, `uploadZone`, `error`, etc.).
+2. Update the `@typedef` JSDoc block at the top of `app/copy/en.js` to document new keys.
+3. Import `copy` in your component and reference the key directly (e.g., `copy.invest.title`).
+4. For strings with dynamic values, use `{placeholder}` tokens and call `.replace("{placeholder}", value)` at the call site.
+5. Add a key-presence assertion in `app/copy/en.test.tsx` for new keys.
+
+**Template placeholder conventions:**
+
+- Use `{placeholderName}` tokens in dictionary strings that need dynamic interpolation.
+- Call `.replace("{placeholderName}", value)` at the render site — never concatenate or interpolate inline.
+- All placeholders in `app/copy/en.js` are documented in `app/copy/en.test.tsx` via the "template placeholder consistency" describe block.
+
 ### File Upload Security
 
 The invoice upload system (`components/UploadZone.jsx`) implements comprehensive security validation for PDF files:

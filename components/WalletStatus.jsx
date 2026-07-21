@@ -15,15 +15,15 @@ import { useWallet, WALLET_STATES } from "./WalletProvider";
 function getTransitionAnnouncement(nextState) {
   switch (nextState) {
     case WALLET_STATES.CONNECTED:
-      return "Wallet connected.";
+      return copy.wallet.announceConnected;
     case WALLET_STATES.DISCONNECTED:
-      return "Wallet disconnected.";
+      return copy.wallet.announceDisconnected;
     case WALLET_STATES.ERROR:
-      return "Wallet connection failed.";
+      return copy.wallet.announceError;
     case WALLET_STATES.WRONG_NETWORK:
-      return "Wallet connected to wrong network.";
+      return copy.wallet.announceWrongNetwork;
     case WALLET_STATES.NO_WALLET:
-      return "No wallet detected.";
+      return copy.wallet.announceNoWallet;
     default:
       return null;
   }
