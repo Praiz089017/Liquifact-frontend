@@ -645,6 +645,35 @@ The Invest page (`app/invest/page.js`) includes an issuer-name search field and 
 | **No-match state**              | A distinct empty state is shown when filters produce zero results, separate from the empty-marketplace state      |
 | **Pagination**                  | `components/Pagination.jsx` — page controls appear when filtered results exceed `PAGE_SIZE` (default 10)          |
 
+#### Pagination
+
+The Invest marketplace (`app/invest/page.js`) renders at most `PAGE_SIZE` (10) invoices at a time. When the filtered result set exceeds `PAGE_SIZE`, a **"Load more"** button is displayed below the list.
+
+| Behaviour | Detail |
+| --------- | ------ |
+| **Initial page** | First `PAGE_SIZE` items are rendered; remaining items are hidden. |
+| **Load more** | Clicking "Load more" appends the next `PAGE_SIZE` batch. The button disappears when all items are visible. |
+| **Paging reset on data change** | `visibleCount` resets to `PAGE_SIZE` when the raw invoice data changes (new fetch, retry). |
+| **Paging reset on filter/search** | `visibleCount` resets to `PAGE_SIZE` when filters or the debounced search term change, so the user always starts at the top of a newly filtered list. |
+| **Focus management** | After each "Load more" click, focus is returned to the button via `setTimeout(0)` so keyboard users do not lose their place. |
+| **Screen-reader announcement** | The polite `aria-live` status region announces _"Showing N of M investable invoices"_ when paging is active (N < M) and the full count when all items are visible. |
+| **Edge cases** | Fewer items than `PAGE_SIZE` → no Load more button, all items shown. Exact `PAGE_SIZE` boundary → no Load more button. Last page remainder → only remaining items appended. |
+| **Empty / error states** | When invoices are loading, errored, empty, or all filtered out, the Load more button is not rendered. |
+
+**Exports from `app/invest/page.js`:**
+
+| Export | Type | Description |
+| ------ | ---- | ----------- |
+| `PAGE_SIZE` | `number` (10) | Maximum items shown per page / load-more batch |
+| `SEARCH_DEBOUNCE_MS` | `number` (300) | Debounce delay for issuer search input |
+| `getPaginationAnnouncement(shown, total)` | `function` | Returns the _"Showing N of M investable invoices"_ screen-reader announcement string |
+| `getInvoiceLoadAnnouncement(invoices, opts)` | `function` | Returns the initial-load or filtered-count announcement string |
+
+**Test coverage:**
+
+- `app/invest/page.test.jsx` covers initial page size, load-more appends, exact boundary, last page remainder, filter-reset, search-reset, and empty/error/no-match states.
+- `components/Pagination.jsx` has dedicated tests for page-change announcements (`Pagination.announce.test.tsx`) and parameter clamping (`Pagination.clamp.test.tsx`).
+
 ---
 
 ## Project structure

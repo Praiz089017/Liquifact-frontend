@@ -12,7 +12,6 @@ import InvoiceFilters, {
   hasAnyActiveFilters,
   parseSortState,
 } from "@/components/InvoiceFilters";
-import Pagination from "@/components/Pagination";
 import NavMenu from "@/components/NavMenu";
 import { copy } from "../copy/en";
 // Mock data is sourced exclusively from lib.js (single source of truth until the API client lands).
@@ -138,9 +137,9 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
    */
   const [retryKey, setRetryKey] = useState(0);
 
-  // Tracks the invoices reference paging was last reset for. Compared during
-  // render (rather than in an effect) per the React-recommended pattern for
-  // resetting state when a prop/value changes: https://react.dev/learn/you-might-not-need-an-effect
+  // Reset paging whenever the raw invoice data changes (new fetch, retry, etc.).
+  // Compared during render per the React-recommended pattern:
+  // https://react.dev/learn/you-might-not-need-an-effect
   const [pagingResetFor, setPagingResetFor] = useState(invoices);
   if (invoices !== pagingResetFor) {
     setPagingResetFor(invoices);
@@ -186,6 +185,16 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  /**
+   * Reset visible page count back to PAGE_SIZE whenever the filters or
+   * debounced search term change so the user always starts at the top of
+   * the newly filtered list.
+   */
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate reset on filter/search change
+  }, [debouncedSearch, filters]);
 
   // Filtered + sorted invoice list
   const filteredInvoices = useMemo(() => {
