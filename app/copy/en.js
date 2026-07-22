@@ -38,6 +38,31 @@
  * @property {string} invest.announceFilteredCount
  * @property {string} invest.announceInvoicesLoaded
  * @property {string} invest.announceShowing
+ * @property {Object} invest.detail - Invoice detail page copy
+ * @property {string} invest.detail.pageTitle
+ * @property {string} invest.detail.pageSub
+ * @property {string} invest.detail.backToMarketplace
+ * @property {string} invest.detail.backToMarketplaceLabel
+ * @property {string} invest.detail.backToHome
+ * @property {string} invest.detail.summaryHeading
+ * @property {string} invest.detail.labelIssuer
+ * @property {string} invest.detail.labelAmount
+ * @property {string} invest.detail.labelYield
+ * @property {string} invest.detail.labelMaturity
+ * @property {string} invest.detail.labelStatus
+ * @property {string} invest.detail.fundButton
+ * @property {string} invest.detail.fundButtonLabel
+ * @property {string} invest.detail.copyLinkButton
+ * @property {string} invest.detail.copyLinkButtonLabel
+ * @property {string} invest.detail.printButton
+ * @property {string} invest.detail.printButtonLabel
+ * @property {string} invest.detail.disclaimerNote
+ * @property {string} invest.detail.copySuccessMsg
+ * @property {string} invest.detail.copySuccessTitle
+ * @property {string} invest.detail.copyErrorMsg
+ * @property {string} invest.detail.copyErrorTitle
+ * @property {string} invest.detail.loadErrorMsg
+ * @property {string} invest.detail.loadErrorTitle
  * @property {Object} invoices - Invoices page copy
  * @property {string} invoices.title
  * @property {string} invoices.subtext
@@ -181,6 +206,33 @@ export const copy = {
     announceFilteredCount: "{matched} of {total} invoices match",
     announceInvoicesLoaded: "{count} investable invoices loaded",
     announceShowing: "Showing {shown} of {total} investable invoices",
+    detail: {
+      pageTitle: "Invoice details",
+      pageSub: "Review the invoice terms before funding.",
+      backToMarketplace: "\u2190 Back to marketplace",
+      backToMarketplaceLabel: "Back to marketplace",
+      backToHome: "\u2190 LiquiFact",
+      summaryHeading: "{issuer}",
+      labelIssuer: "Issuer",
+      labelAmount: "Amount",
+      labelYield: "Estimated yield",
+      labelMaturity: "Maturity date",
+      labelStatus: "Status",
+      fundButton: "Fund this invoice",
+      fundButtonLabel: "Fund this invoice",
+      copyLinkButton: "Copy link",
+      copyLinkButtonLabel: "Copy invoice link to clipboard",
+      printButton: "Print / Save PDF",
+      printButtonLabel: "Print or save this invoice as PDF",
+      disclaimerNote:
+        "Note: Yield references are educational only and reflect on-chain basis-point assumptions. Invoice contracts settle at maturity. Funding commits principal and is subject to wallet approval.",
+      copySuccessMsg: "Invoice link copied to clipboard.",
+      copySuccessTitle: "Link copied",
+      copyErrorMsg: "Could not copy link to clipboard.",
+      copyErrorTitle: "Copy failed",
+      loadErrorMsg: "Unable to load invoice details right now.",
+      loadErrorTitle: "Unable to load invoice details",
+    },
   },
   invoices: {
     title: "Invoices",
