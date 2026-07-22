@@ -48,9 +48,7 @@ export function getInvoiceLoadAnnouncement(invoices, { filterActive, filteredCou
 
 export function getPaginationAnnouncement(shown, total) {
   if (total === 0) return copy.invest.announceNoInvoices;
-  return copy.invest.announceShowing
-    .replace("{shown}", shown)
-    .replace("{total}", total);
+  return copy.invest.announceShowing.replace("{shown}", shown).replace("{total}", total);
 }
 
 /**
@@ -186,15 +184,16 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  /**
-   * Reset visible page count back to PAGE_SIZE whenever the filters or
-   * debounced search term change so the user always starts at the top of
-   * the newly filtered list.
-   */
-  useEffect(() => {
+  // Reset the visible page count to PAGE_SIZE whenever the filters or debounced
+  // search term change, using the React-sanctioned "adjust state during render"
+  // pattern so the user always starts at the top of the newly filtered list
+  // (avoids a setState-in-effect cascading render).
+  const filterSignature = JSON.stringify([debouncedSearch, filters]);
+  const [prevFilterSignature, setPrevFilterSignature] = useState(filterSignature);
+  if (filterSignature !== prevFilterSignature) {
+    setPrevFilterSignature(filterSignature);
     setVisibleCount(PAGE_SIZE);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate reset on filter/search change
-  }, [debouncedSearch, filters]);
+  }
 
   // Filtered + sorted invoice list
   const filteredInvoices = useMemo(() => {
@@ -421,8 +420,14 @@ export function InvestMarketplace({ loadInvoices = loadMockInvoices }) {
                     <span>
                       {inv.currency}&nbsp;{inv.amount}
                     </span>
-                    <span>{copy.invest.labelYield}{inv.yield}</span>
-                    <span>{copy.invest.labelMaturity}{inv.dueDate}</span>
+                    <span>
+                      {copy.invest.labelYield}
+                      {inv.yield}
+                    </span>
+                    <span>
+                      {copy.invest.labelMaturity}
+                      {inv.dueDate}
+                    </span>
                   </div>
                 </li>
               ))}

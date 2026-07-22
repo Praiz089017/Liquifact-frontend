@@ -191,7 +191,9 @@ function UploadZone({ onUploadSuccess, progress }) {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || copy.uploadZone.errorUploadStatus.replace("{status}", res.status));
+        throw new Error(
+          data.message || copy.uploadZone.errorUploadStatus.replace("{status}", res.status)
+        );
       }
 
       setStatus("tokenizing");

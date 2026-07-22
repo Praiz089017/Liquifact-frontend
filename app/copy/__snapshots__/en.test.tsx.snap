@@ -107,6 +107,8 @@ exports[`copy dictionary — snapshot of full dictionary matches the full copy d
     "fileInputLabel": "Select PDF invoice file",
     "requirementsBody": "Only PDF documents are accepted. Files larger than {maxSizeMb} MB will be rejected. Ensure your invoice is complete and legible before uploading.",
     "requirementsTitle": "Upload requirements",
+    "resetAction": "Upload another invoice",
+    "resetAriaLabel": "Upload another invoice — clears current upload and starts fresh",
     "spinnerLabel": "Loading",
     "statusSuccess": "Invoice queued for tokenization. Blockchain confirmation pending.",
     "statusTokenizing": "Invoice uploaded. Pending tokenization...",

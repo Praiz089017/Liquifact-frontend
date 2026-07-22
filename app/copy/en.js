@@ -138,7 +138,8 @@ export const copy = {
       "Unlock liquidity from unpaid invoices instantly. SMEs get working capital; investors earn yield. Tokenized invoices, escrow on Soroban.",
     boxBusinessTitle: "For Businesses",
     boxBusinessSub: "Upload invoices, get instant stablecoin liquidity.",
-    boxBusinessAriaLabel: "For Businesses \u2013 upload invoices and get instant stablecoin liquidity",
+    boxBusinessAriaLabel:
+      "For Businesses \u2013 upload invoices and get instant stablecoin liquidity",
     boxInvestTitle: "For Investors",
     boxInvestSub: "Fund tokenized invoices and earn yield at maturity.",
     boxInvestAriaLabel: "For Investors \u2013 fund tokenized invoices and earn yield at maturity",
@@ -233,7 +234,6 @@ export const copy = {
     errorUploadStatus: "Upload failed ({status})",
     resetAction: "Upload another invoice",
     resetAriaLabel: "Upload another invoice \u2014 clears current upload and starts fresh",
-
   },
   wallet: {
     connectButton: "Connect Wallet",

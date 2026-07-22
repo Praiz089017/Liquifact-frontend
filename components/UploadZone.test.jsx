@@ -650,9 +650,7 @@ describe("UploadZone", () => {
       expect(screen.queryByText("invoice.pdf")).not.toBeInTheDocument();
 
       // The submit button should be disabled again (no file selected)
-      expect(
-        screen.getByRole("button", { name: /upload & tokenize invoice/i })
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeDisabled();
 
       // The dropzone should show the idle prompt
       expect(screen.getByText(copy.uploadZone.dragDropPrompt)).toBeInTheDocument();
@@ -727,9 +725,7 @@ describe("UploadZone", () => {
       fireEvent.change(input, { target: { files: [file2] } });
 
       expect(screen.getByText("invoice2.pdf")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /upload & tokenize invoice/i })
-      ).toBeEnabled();
+      expect(screen.getByRole("button", { name: /upload & tokenize invoice/i })).toBeEnabled();
 
       fireEvent.click(screen.getByRole("button", { name: /upload & tokenize invoice/i }));
 
