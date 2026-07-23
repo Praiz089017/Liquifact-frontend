@@ -202,11 +202,7 @@ export default async function InvoiceDetailPage({ params }) {
         </section>
 
         {/* ── Lifecycle timeline (server-rendered, status-driven) ───────── */}
-        <InvoiceTimeline
-          status={invoice.status}
-          timestamps={invoice.timestamps}
-          className="mb-6"
-        />
+        <InvoiceTimeline status={invoice.status} timestamps={invoice.timestamps} className="mb-6" />
 
         {/* ── Interactive controls (client boundary) ────────────────── */}
         <FundActions

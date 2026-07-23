@@ -186,7 +186,9 @@ describe("InvoiceDetailPage (Server Component shell)", () => {
     it("renders the issuer name as the section heading (h2)", async () => {
       await renderServerPage({ id: "inv-001" });
 
-      expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Acme Supplies Ltd");
+      expect(
+        screen.getByRole("heading", { level: 2, name: "Acme Supplies Ltd" })
+      ).toBeInTheDocument();
     });
 
     it("renders all definition list labels as <dt> elements", async () => {

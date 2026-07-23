@@ -114,7 +114,9 @@ describe("WalletStatus Button variant + loading — per WALLET_STATE", () => {
    */
   function getWalletButton() {
     const buttons = screen.getAllByRole("button");
-    const actionButton = buttons.find((btn) => btn.getAttribute("aria-label") !== "Copy wallet address");
+    const actionButton = buttons.find(
+      (btn) => btn.getAttribute("aria-label") !== "Copy wallet address"
+    );
     return actionButton || buttons[0];
   }
 

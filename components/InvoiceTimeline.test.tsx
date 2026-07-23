@@ -55,9 +55,7 @@ describe("InvoiceTimeline — basic rendering", () => {
 
   it("renders the section heading", () => {
     renderTimeline();
-    expect(
-      screen.getByRole("heading", { name: copy.invoiceTimeline.heading })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: copy.invoiceTimeline.heading })).toBeInTheDocument();
   });
 
   it("renders an ordered list (<ol>)", () => {
@@ -462,9 +460,7 @@ describe("InvoiceTimeline — screen-reader semantics", () => {
 
   it("the ordered list has an aria-label matching the heading", () => {
     renderTimeline();
-    expect(
-      screen.getByRole("list", { name: copy.invoiceTimeline.heading })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: copy.invoiceTimeline.heading })).toBeInTheDocument();
   });
 
   it("each list item has a descriptive aria-label including the stage name", () => {

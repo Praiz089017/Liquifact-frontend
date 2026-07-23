@@ -165,10 +165,7 @@ export default function InvoiceTimeline({ status, timestamps = {}, className = "
         .filter(Boolean)
         .join(" ")}
     >
-      <h2
-        id="invoice-timeline-heading"
-        className="text-base font-semibold text-slate-100 mb-6"
-      >
+      <h2 id="invoice-timeline-heading" className="text-base font-semibold text-slate-100 mb-6">
         {copy.invoiceTimeline.heading}
       </h2>
 
@@ -214,10 +211,7 @@ export default function InvoiceTimeline({ status, timestamps = {}, className = "
               {!isLast && (
                 <span
                   aria-hidden="true"
-                  className={[
-                    "absolute left-[11px] top-6 w-0.5 h-full",
-                    tone.connector,
-                  ].join(" ")}
+                  className={["absolute left-[11px] top-6 w-0.5 h-full", tone.connector].join(" ")}
                 />
               )}
 
@@ -252,9 +246,7 @@ export default function InvoiceTimeline({ status, timestamps = {}, className = "
               <div className="flex flex-col min-w-0">
                 <span className={["text-sm leading-6", tone.label].join(" ")}>{label}</span>
                 {timestamp != null && String(timestamp).trim().length > 0 && (
-                  <span className="text-xs text-slate-500 mt-0.5">
-                    {String(timestamp).trim()}
-                  </span>
+                  <span className="text-xs text-slate-500 mt-0.5">{String(timestamp).trim()}</span>
                 )}
               </div>
             </li>

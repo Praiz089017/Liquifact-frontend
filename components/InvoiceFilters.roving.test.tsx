@@ -274,9 +274,7 @@ describe("aria-pressed correctness", () => {
 
     fireEvent.click(usd);
 
-    expect(onFilterChange).toHaveBeenCalledWith(
-      expect.objectContaining({ currency: "USD" })
-    );
+    expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ currency: "USD" }));
   });
 
   it("clicking an already-selected chip deselects it via onFilterChange", () => {
@@ -285,9 +283,7 @@ describe("aria-pressed correctness", () => {
 
     fireEvent.click(usd);
 
-    expect(onFilterChange).toHaveBeenCalledWith(
-      expect.objectContaining({ currency: "" })
-    );
+    expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ currency: "" }));
   });
 });
 
@@ -301,9 +297,7 @@ describe("Mouse click interactions", () => {
     fireEvent.click(gbp);
 
     expect(onFilterChange).toHaveBeenCalledTimes(1);
-    expect(onFilterChange).toHaveBeenCalledWith(
-      expect.objectContaining({ currency: "GBP" })
-    );
+    expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ currency: "GBP" }));
   });
 
   it("clicking a chip updates the roving tabindex so that chip gets tabindex=0", () => {
