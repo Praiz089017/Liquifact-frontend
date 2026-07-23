@@ -23,8 +23,7 @@ const RULE_CONFIG = {
     "no-restricted-syntax": [
       "error",
       {
-        selector:
-          "MemberExpression[object.name='process'][property.name='env']",
+        selector: "MemberExpression[object.name='process'][property.name='env']",
         message:
           "Use the typed env singleton from 'lib/config/env' instead of " +
           "accessing process.env directly. Import with: " +
@@ -112,9 +111,7 @@ describe("no-restricted-syntax: process.env", () => {
     });
 
     it("flags process.env with a logical OR fallback", () => {
-      const messages = lint(
-        "const url = process.env.API_URL || 'http://localhost:3001';"
-      );
+      const messages = lint("const url = process.env.API_URL || 'http://localhost:3001';");
       expect(messages).toHaveLength(1);
     });
 
@@ -124,9 +121,7 @@ describe("no-restricted-syntax: process.env", () => {
     });
 
     it("flags process.env in a ternary", () => {
-      const messages = lint(
-        "const x = process.env.A ? 'yes' : 'no';"
-      );
+      const messages = lint("const x = process.env.A ? 'yes' : 'no';");
       expect(messages).toHaveLength(1);
     });
 
@@ -162,17 +157,13 @@ describe("no-restricted-syntax: process.env", () => {
     });
 
     it("reports the correct line for process.env in multi-line code", () => {
-      const messages = lint(
-        "const a = 1;\nconst b = process.env.X;\nconst c = 3;"
-      );
+      const messages = lint("const a = 1;\nconst b = process.env.X;\nconst c = 3;");
       expect(messages).toHaveLength(1);
       expect(messages[0].line).toBe(2);
     });
 
     it("reports each occurrence on its own line", () => {
-      const messages = lint(
-        "const a = process.env.X;\nconst b = process.env.Y;"
-      );
+      const messages = lint("const a = process.env.X;\nconst b = process.env.Y;");
       expect(messages).toHaveLength(2);
       expect(messages[0].line).toBe(1);
       expect(messages[1].line).toBe(2);
@@ -181,13 +172,9 @@ describe("no-restricted-syntax: process.env", () => {
 
   describe("multiple violations", () => {
     it("flags multiple process.env usages in one expression", () => {
-      const messages = lint(
-        "const a = process.env.X + process.env.Y;"
-      );
+      const messages = lint("const a = process.env.X + process.env.Y;");
       expect(messages).toHaveLength(2);
-      messages.forEach((m) =>
-        expect(m.ruleId).toBe("no-restricted-syntax")
-      );
+      messages.forEach((m) => expect(m.ruleId).toBe("no-restricted-syntax"));
     });
 
     it("flags every process.env in a block", () => {

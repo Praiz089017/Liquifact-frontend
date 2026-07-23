@@ -42,8 +42,7 @@ const eslintConfig = defineConfig([
       "no-restricted-syntax": [
         "error",
         {
-          selector:
-            "MemberExpression[object.name='process'][property.name='env']",
+          selector: "MemberExpression[object.name='process'][property.name='env']",
           message:
             "Use the typed env singleton from 'lib/config/env' instead of " +
             "accessing process.env directly. Import with: " +
